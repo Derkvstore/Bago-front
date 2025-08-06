@@ -15,7 +15,8 @@ export default function Login() {
 
     try {
       // REMPLACEZ 'https://votre-backend-deploye.up.railway.app' par l'URL réelle de votre backend Railway
-      const backendUrl = 'https://votre-backend-deploye.up.railway.app'; // <-- Mettez votre URL backend ici
+      const backendUrl = import.meta.env.VITE_API_URL;
+ // <-- Mettez votre URL backend ici
       
       const res = await fetch(`${backendUrl}/api/login`, {
         method: 'POST',

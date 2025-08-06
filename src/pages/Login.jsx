@@ -14,9 +14,10 @@ export default function Login() {
     setMessage('');
 
     try {
-      // IMPORTANT : Changez cette URL pour l'URL de votre back-end déployé sur Railway !
-      // Exemple : const res = await fetch('https://niangadouback-production.up.railway.app/api/login', {
-      const res = await fetch('http://localhost:3001/api/login', {
+      // REMPLACEZ 'https://votre-backend-deploye.up.railway.app' par l'URL réelle de votre backend Railway
+      const backendUrl = 'https://votre-backend-deploye.up.railway.app'; // <-- Mettez votre URL backend ici
+      
+      const res = await fetch(`${backendUrl}/api/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),

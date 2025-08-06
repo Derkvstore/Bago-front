@@ -1,4 +1,3 @@
-// src/pages/NouvelleVentes.jsx
 import React, { useState, useEffect } from 'react';
 import { PlusIcon, TrashIcon, ShoppingCartIcon, CheckCircleIcon, XCircleIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import Skeleton from 'react-loading-skeleton'; // Importe Skeleton
@@ -17,6 +16,9 @@ export default function NouvelleVente() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // REMPLACEZ 'https://votre-backend-deploye.up.railway.app' par l'URL réelle de votre backend Railway
+  const backendUrl = 'https://votre-backend-deploye.up.railway.app'; // <-- Mettez votre URL backend ici
+
   // Helper function to format currency
   const formatCFA = (amount) => {
     if (amount === null || amount === undefined || isNaN(amount)) {
@@ -34,7 +36,7 @@ export default function NouvelleVente() {
     setLoading(true);
     setStatusMessage({ type: '', text: '' });
     try {
-      const clientsRes = await fetch('http://localhost:3001/api/clients');
+      const clientsRes = await fetch(`${backendUrl}/api/clients`); // URL mise à jour
       if (!clientsRes.ok) {
         const errorData = await clientsRes.json();
         throw new Error(errorData.error || 'Échec de la récupération des clients.');
@@ -42,7 +44,7 @@ export default function NouvelleVente() {
       const clientsData = await clientsRes.json();
       setClients(clientsData);
 
-      const productsRes = await fetch('http://localhost:3001/api/products');
+      const productsRes = await fetch(`${backendUrl}/api/products`); // URL mise à jour
       if (!productsRes.ok) {
         const errorData = await productsRes.json();
         throw new Error(errorData.error || 'Échec de la récupération des produits.');
@@ -187,7 +189,7 @@ export default function NouvelleVente() {
     }
 
     try {
-      const res = await fetch('http://localhost:3001/api/ventes', {
+      const res = await fetch(`${backendUrl}/api/ventes`, { // URL mise à jour
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

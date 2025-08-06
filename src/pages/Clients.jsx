@@ -15,9 +15,12 @@ export default function Clients() {
   const [form, setForm] = useState({ nom: '', telephone: '', adresse: '' });
   const [editingId, setEditingId] = useState(null);
 
+  // REMPLACEZ 'https://votre-backend-deploye.up.railway.app' par l'URL réelle de votre backend Railway
+  const backendUrl = 'https://votre-backend-deploye.up.railway.app'; // <-- Mettez votre URL backend ici
+
   // Charger clients
   const fetchClients = () => {
-    fetch('http://localhost:3001/api/clients')
+    fetch(`${backendUrl}/api/clients`) // URL mise à jour
       .then(res => res.json())
       .then(data => {
         setClients(data);
@@ -35,8 +38,8 @@ export default function Clients() {
 
     const method = editingId ? 'PUT' : 'POST';
     const url = editingId
-      ? `http://localhost:3001/api/clients/${editingId}`
-      : 'http://localhost:3001/api/clients';
+      ? `${backendUrl}/api/clients/${editingId}` // URL mise à jour
+      : `${backendUrl}/api/clients`; // URL mise à jour
 
     const res = await fetch(url, {
       method,
@@ -53,8 +56,10 @@ export default function Clients() {
   };
 
   const handleDelete = async (id) => {
-    if (confirm('Confirmer la suppression ?')) {
-      const res = await fetch(`http://localhost:3001/api/clients/${id}`, {
+    // IMPORTANT: Utilisez une modale personnalisée au lieu de confirm() pour une meilleure expérience utilisateur
+    // Par exemple, un composant de confirmation que vous affichez et masquez
+    if (window.confirm('Confirmer la suppression ?')) { // Temporaire: utilisez une modale customisée
+      const res = await fetch(`${backendUrl}/api/clients/${id}`, { // URL mise à jour
         method: 'DELETE',
       });
 

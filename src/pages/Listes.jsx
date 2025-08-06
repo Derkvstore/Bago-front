@@ -14,6 +14,9 @@ export default function Liste() {
   const [statusMessage, setStatusMessage] = useState({ type: '', text: '' }); // { type: 'success' | 'error', text: '' }
   const [searchTerm, setSearchTerm] = useState('');
 
+  // REMPLACEZ 'https://votre-backend-deploye.up.railway.app' par l'URL réelle de votre backend Railway
+  const backendUrl = 'https://votre-backend-deploye.up.railway.app'; // <-- Mettez votre URL backend ici
+
   // Obtenir la date du jour formatée
   const getFormattedDate = () => {
     const today = new Date();
@@ -40,7 +43,7 @@ export default function Liste() {
     setLoading(true);
     setStatusMessage({ type: '', text: '' });
     try {
-      const ventesRes = await fetch('http://localhost:3001/api/ventes');
+      const ventesRes = await fetch(`${backendUrl}/api/ventes`); // URL mise à jour
       if (!ventesRes.ok) {
         const errorData = await ventesRes.json();
         throw new Error(errorData.error || 'Échec de la récupération des ventes.');

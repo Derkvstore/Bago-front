@@ -1,4 +1,3 @@
-// src/pages/Benefices.jsx
 import React, { useState, useEffect } from 'react';
 import { CurrencyDollarIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
@@ -42,7 +41,9 @@ export default function Benefices() {
     setLoading(true);
     setError(null);
     try {
-      let url = 'http://localhost:3001/api/benefices';
+      // REMPLACEZ 'https://votre-backend-deploye.up.railway.app' par l'URL réelle de votre backend Railway
+      const backendUrl = 'https://votre-backend-deploye.up.railway.app'; // <-- Mettez votre URL backend ici
+      let url = `${backendUrl}/api/benefices`;
       if (selectedDate) {
         url += `?date=${selectedDate}`; // Ajoute le paramètre de date si une date est sélectionnée
       }

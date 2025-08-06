@@ -1,4 +1,3 @@
-// frontend/src/components/Fournisseurs.jsx
 import React, { useEffect, useState } from "react";
 import { PlusIcon, PencilIcon, TrashIcon, BuildingOfficeIcon, XMarkIcon } from "@heroicons/react/24/outline";
 
@@ -21,6 +20,9 @@ export default function Fournisseurs() {
   const [confirmModalContent, setConfirmModalContent] = useState({ title: "", message: "" });
   const [onConfirmAction, setOnConfirmAction] = useState(null);
 
+  // REMPLACEZ 'https://votre-backend-deploye.up.railway.app' par l'URL réelle de votre backend Railway
+  const backendUrl = 'https://votre-backend-deploye.up.railway.app'; // <-- Mettez votre URL backend ici
+
   const openConfirmModal = (title, message, action) => {
     setConfirmModalContent({ title, message });
     setOnConfirmAction(() => action);
@@ -37,7 +39,7 @@ export default function Fournisseurs() {
     setLoading(true);
     setFormError("");
     setSuccessMessage("");
-    fetch("http://localhost:3001/api/fournisseurs")
+    fetch(`${backendUrl}/api/fournisseurs`) // URL mise à jour
       .then((res) => {
         if (!res.ok) {
           throw new Error("Erreur réseau lors de la récupération des fournisseurs.");
@@ -79,7 +81,7 @@ export default function Fournisseurs() {
       return;
     }
 
-    let url = "http://localhost:3001/api/fournisseurs";
+    let url = `${backendUrl}/api/fournisseurs`; // URL mise à jour
     let method = "POST";
 
     if (editingId) {
@@ -118,7 +120,7 @@ export default function Fournisseurs() {
       "Êtes-vous sûr de vouloir supprimer ce fournisseur ? Cette action est irréversible et ne peut être effectuée que si aucun produit n'est lié à lui.",
       async () => {
         try {
-          const res = await fetch(`http://localhost:3001/api/fournisseurs/${id}`, {
+          const res = await fetch(`${backendUrl}/api/fournisseurs/${id}`, { // URL mise à jour
             method: "DELETE",
           });
           if (res.ok) {

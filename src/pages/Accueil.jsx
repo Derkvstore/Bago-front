@@ -52,7 +52,10 @@ export default function Accueil() {
     setStatsLoading(true);
     setStatsError('');
     try {
-      const response = await fetch('http://localhost:3001/api/reports/dashboard-stats');
+      // REMPLACEZ 'https://votre-backend-deploye.up.railway.app' par l'URL réelle de votre backend Railway
+      const backendUrl = 'https://votre-backend-deploye.up.railway.app'; // <-- Mettez votre URL backend ici
+      const response = await fetch(`${backendUrl}/api/reports/dashboard-stats`);
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Échec de la récupération des statistiques du tableau de bord.');

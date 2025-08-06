@@ -15,14 +15,16 @@ export default function Login() {
 
     try {
       // REMPLACEZ 'https://votre-backend-deploye.up.railway.app' par l'URL réelle de votre backend Railway
-      const backendUrl = import.meta.env.VITE_API_URL;
- // <-- Mettez votre URL backend ici
-      
-      const res = await fetch(`${backendUrl}/api/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      });
+      const BACKEND_URL = import.meta.env.PROD
+  ? 'https://bago-back-production.up.railway.app'
+  : 'http://localhost:3001';
+
+const res = await fetch(`${BACKEND_URL}/api/login`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ username, password }),
+});
+
 
       const data = await res.json(); // Récupérez les données de la réponse JSON
 

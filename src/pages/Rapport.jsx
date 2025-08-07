@@ -25,8 +25,10 @@ export default function Rapport() {
   const [statusMessage, setStatusMessage] = useState({ type: '', text: '' });
   const [searchTerm, setSearchTerm] = useState('');
 
-  // REMPLACEZ 'https://votre-backend-deploye.up.railway.app' par l'URL réelle de votre backend Railway
-  const backendUrl = 'https://votre-backend-deploye.up.railway.app'; // <-- Mettez votre URL backend ici
+  // ✅ LOGIQUE CORRIGÉE POUR GÉRER LOCAL ET PRODUCTION
+  const backendUrl = import.meta.env.PROD
+    ? 'https://bago-back-production.up.railway.app'
+    : 'http://localhost:3001';
 
   const getFormattedDate = () => {
     const today = new Date();
@@ -60,7 +62,7 @@ export default function Rapport() {
 
   const fetchDailyStats = async () => {
     try {
-      // CORRECTION DE L'URL ICI : Changement de /api/ventes/reports/dashboard-stats à /api/reports/dashboard-stats
+      // CORRECTION DE L'URL ICI
       const response = await axios.get(`${backendUrl}/api/reports/dashboard-stats`); // URL mise à jour
       if (response.status !== 200) {
         throw new Error(response.data.error || 'Échec de la récupération des statistiques journalières.');
@@ -324,5 +326,4 @@ export default function Rapport() {
         </div>
       )}
     </div>
-  );
-}
+  )}

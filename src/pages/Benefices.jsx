@@ -41,8 +41,11 @@ export default function Benefices() {
     setLoading(true);
     setError(null);
     try {
-      // REMPLACEZ 'https://votre-backend-deploye.up.railway.app' par l'URL réelle de votre backend Railway
-      const backendUrl = 'https://votre-backend-deploye.up.railway.app'; // <-- Mettez votre URL backend ici
+      // ✅ LOGIQUE CORRIGÉE POUR GÉRER LOCAL ET PRODUCTION
+      const backendUrl = import.meta.env.PROD
+        ? 'https://bago-back-production.up.railway.app'
+        : 'http://localhost:3001';
+
       let url = `${backendUrl}/api/benefices`;
       if (selectedDate) {
         url += `?date=${selectedDate}`; // Ajoute le paramètre de date si une date est sélectionnée

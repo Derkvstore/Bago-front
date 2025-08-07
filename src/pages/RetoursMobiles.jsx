@@ -21,8 +21,10 @@ export default function RetoursMobiles() {
   const [isConfirming, setIsConfirming] = useState(false);
   const [selectedMobiles, setSelectedMobiles] = useState([]); // Nouveau: pour stocker les IDs des mobiles sélectionnés
 
-  // REMPLACEZ 'https://votre-backend-deploye.up.railway.app' par l'URL réelle de votre backend Railway
-  const backendUrl = 'https://votre-backend-deploye.up.railway.app'; // <-- Mettez votre URL backend ici
+  // ✅ LOGIQUE CORRIGÉE POUR GÉRER LOCAL ET PRODUCTION
+  const backendUrl = import.meta.env.PROD
+    ? 'https://bago-back-production.up.railway.app'
+    : 'http://localhost:3001';
 
   const openConfirmModal = (title, message, action) => {
     setConfirmModalContent({ title, message });
@@ -336,5 +338,4 @@ export default function RetoursMobiles() {
         </div>
       )}
     </div>
-  );
-}
+  )}

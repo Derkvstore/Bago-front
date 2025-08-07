@@ -22,8 +22,10 @@ export default function Login() {
 const res = await fetch(`${BACKEND_URL}/api/login`, {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
+  credentials: 'include', // ✅ Nécessaire pour autoriser les cookies/tokens CORS
   body: JSON.stringify({ username, password }),
 });
+
 
 
       const data = await res.json(); // Récupérez les données de la réponse JSON

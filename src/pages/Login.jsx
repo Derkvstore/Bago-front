@@ -1,40 +1,37 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff } from 'lucide-react'; // Importez les icônes nécessaires
+import { Eye, EyeOff } from 'lucide-react';
 
 export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
-  const [showPassword, setShowPassword] = useState(false); // Nouvel état pour la visibilité du mot de passe
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false); // 💡 Nouvel état pour le spinner
+
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage('');
+    setLoading(true); // 🌀 Démarre le loading
 
     try {
-      // REMPLACEZ 'https://votre-backend-deploye.up.railway.app' par l'URL réelle de votre backend Railway
-      const BACKEND_URL = import.meta.env.PROD
-  ? 'https://bago-back-production.up.railway.app'
-  : 'http://localhost:3001';
+      const BACKEND_URL = import.meta.env.VITE_API_URL;
 
-const res = await fetch(`${BACKEND_URL}/api/login`, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  credentials: 'include', // ✅ Nécessaire pour autoriser les cookies/tokens CORS
-  body: JSON.stringify({ username, password }),
-});
+      const res = await fetch(`${BACKEND_URL}/api/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ username, password }),
+      });
 
-
-
-      const data = await res.json(); // Récupérez les données de la réponse JSON
+      const data = await res.json();
 
       if (res.ok) {
         localStorage.setItem('token', data.token);
-        // STOCKER ICI LE NOM COMPLET ET LE NOM D'UTILISATEUR
-        localStorage.setItem('fullName', data.fullName); // data.fullName vient du backend
-        localStorage.setItem('username', data.username); // data.username vient du backend (fallback si fullName est vide)
+        localStorage.setItem('fullName', data.fullName);
+        localStorage.setItem('username', data.username);
         navigate('/dashboard');
       } else {
         setMessage(`❌ ${data.error || data.message || 'Erreur inconnue'}`);
@@ -42,6 +39,8 @@ const res = await fetch(`${BACKEND_URL}/api/login`, {
     } catch (err) {
       console.error('Erreur lors de la connexion frontend :', err);
       setMessage('❌ Erreur serveur');
+    } finally {
+      setLoading(false); // 🛑 Stop le loading quoi qu’il arrive
     }
   };
 
@@ -80,6 +79,7 @@ const res = await fetch(`${BACKEND_URL}/api/login`, {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="mt-1 w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={loading}
             />
           </div>
 
@@ -87,30 +87,37 @@ const res = await fetch(`${BACKEND_URL}/api/login`, {
             <label htmlFor="password" className="block text-sm font-medium text-gray-700">
               Mot de passe
             </label>
-            <div className="relative mt-1"> {/* Conteneur pour l'input et l'icône */}
+            <div className="relative mt-1">
               <input
                 id="password"
-                type={showPassword ? 'text' : 'password'} // Change le type en fonction de l'état
+                type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10" // Ajout de padding à droite
+                className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
+                disabled={loading}
               />
               <button
-                type="button" // Important : type="button" pour éviter la soumission du formulaire
+                type="button"
                 onClick={togglePasswordVisibility}
                 className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-blue-600 focus:outline-none"
                 aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
               >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />} {/* Affiche l'icône appropriée */}
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
             </div>
           </div>
 
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-3 rounded-full hover:bg-blue-700 transition"
+            disabled={loading}
+            className={`w-full flex justify-center items-center gap-2 bg-blue-600 text-white py-3 rounded-full transition hover:bg-blue-700 ${
+              loading ? 'opacity-60 cursor-not-allowed' : ''
+            }`}
           >
-            Se connecter
+            {loading && (
+              <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+            )}
+            {loading ? 'Connexion en cours...' : 'Se connecter'}
           </button>
         </form>
       </div>

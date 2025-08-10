@@ -20,6 +20,17 @@ export default function Clients() {
     ? 'https://bago-back-production.up.railway.app'
     : 'http://localhost:3001';
 
+  // Fonction pour formater le numero de telephone (par ex. "90 80 90 89")
+  const formatPhoneNumber = (num) => {
+    if (!num) return '';
+    const cleaned = ('' + num).replace(/\D/g, '');
+    const match = cleaned.match(/^(\d{2})(\d{2})(\d{2})(\d{2})$/);
+    if (match) {
+      return `${match[1]} ${match[2]} ${match[3]} ${match[4]}`;
+    }
+    return cleaned;
+  };
+
   // Charger clients
   const fetchClients = () => {
     fetch(`${backendUrl}/api/clients`)
@@ -46,7 +57,8 @@ export default function Clients() {
     const res = await fetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
+      // Enlever les espaces avant l'envoi et s'assurer que le numero est valide
+      body: JSON.stringify({ ...form, telephone: form.telephone.replace(/\s/g, '') }), 
     });
 
     if (res.ok) {
@@ -58,9 +70,9 @@ export default function Clients() {
   };
 
   const handleDelete = async (id) => {
-    // IMPORTANT: Utilisez une modale personnalisée au lieu de confirm() pour une meilleure expérience utilisateur
+    // IMPORTANT: Utilisez une modale personnalisee au lieu de confirm() pour une meilleure experience utilisateur
     // Par exemple, un composant de confirmation que vous affichez et masquez
-    if (window.confirm('Confirmer la suppression ?')) { // Temporaire: utilisez une modale customisée
+    if (window.confirm('Confirmer la suppression ?')) { // Temporaire: utilisez une modale customisee
       const res = await fetch(`${backendUrl}/api/clients/${id}`, {
         method: 'DELETE',
       });
@@ -72,7 +84,7 @@ export default function Clients() {
   const handleEdit = (client) => {
     setForm({
       nom: client.nom,
-      telephone: client.telephone,
+      telephone: client.telephone, // Stocker le numero brut
       adresse: client.adresse,
     });
     setEditingId(client.id);
@@ -133,9 +145,12 @@ export default function Clients() {
           />
           <input
             type="text"
-            placeholder="Téléphone"
-            value={form.telephone}
-            onChange={(e) => setForm({ ...form, telephone: e.target.value })}
+            placeholder="Telephone"
+            value={formatPhoneNumber(form.telephone)}
+            onChange={(e) => {
+              const cleaned = e.target.value.replace(/\s/g, '').replace(/\D/g, '');
+              setForm({ ...form, telephone: cleaned });
+            }}
             className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
           />
           <input
@@ -171,15 +186,16 @@ export default function Clients() {
       {loading ? (
         <p className="text-gray-500 text-center mt-8">Chargement...</p>
       ) : filteredClients.length === 0 ? (
-        <p className="text-gray-500 text-center mt-8">Aucun client trouvé.</p>
+        <p className="text-gray-500 text-center mt-8">Aucun client trouve.</p>
       ) : (
         <div className="bg-white shadow-lg rounded-xl overflow-hidden border border-gray-200 mt-6">
           <table className="min-w-full divide-y divide-gray-200 text-sm">
             <thead className="bg-gray-100 text-gray-700 text-left">
               <tr>
                 <th className="px-6 py-3 font-semibold uppercase tracking-wider">Nom</th>
-                <th className="px-6 py-3 font-semibold uppercase tracking-wider">Téléphone</th>
+                <th className="px-6 py-3 font-semibold uppercase tracking-wider">Telephone</th>
                 <th className="px-6 py-3 font-semibold uppercase tracking-wider">Adresse</th>
+                <th className="px-6 py-3 font-semibold uppercase tracking-wider">Date d'ajout</th>
                 <th className="px-6 py-3 text-right font-semibold uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
@@ -190,10 +206,17 @@ export default function Clients() {
                     {client.nom}
                   </td>
                   <td className="px-6 py-4 text-gray-700">
-                    {client.telephone || '-'}
+                    {formatPhoneNumber(client.telephone) || '-'}
                   </td>
                   <td className="px-6 py-4 text-gray-700">
                     {client.adresse || '-'}
+                  </td>
+                  <td className="px-6 py-4 text-gray-700">
+                    {client.created_at
+                      ? new Date(client.created_at).toLocaleDateString('fr-FR', {
+                          year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit',
+                        })
+                      : '-'}
                   </td>
                   <td className="px-6 py-4 text-right space-x-2">
                     <button

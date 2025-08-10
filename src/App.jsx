@@ -1,7 +1,9 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import Accueil from '.pages/Accueil'; // Assurez-vous que le composant Accueil est dans le même dossier ou ajustez le chemin
-import Login from '.pages/Login';   // Assurez-vous que le composant Login est dans le même dossier ou ajustez le chemin
+import Login from './pages/Login';   
+import Dashboard from './pages/Dashboard';
+import Clients from './pages/Clients';
+import Products from './pages/Products';
 
 // 💡 Composant pour gérer la protection des routes
 // Il vérifie si l'utilisateur est authentifié. Si ce n'est pas le cas, il redirige vers la page de connexion.
@@ -25,12 +27,28 @@ export default function App() {
         {/* Route pour la page de connexion */}
         <Route path="/login" element={<Login />} />
         
-        {/* Route pour la page d'accueil (tableau de bord) protégée */}
+        {/* Routes pour les pages protégées */}
         <Route
           path="/dashboard"
           element={
             <ProtectedRoute>
-              <Accueil />
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/clients"
+          element={
+            <ProtectedRoute>
+              <Clients />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/products"
+          element={
+            <ProtectedRoute>
+              <Products />
             </ProtectedRoute>
           }
         />

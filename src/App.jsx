@@ -4,6 +4,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Clients from './pages/Clients';
 import Products from './pages/Products';
+import { TriangleAlert } from 'lucide-react'; // Importation de l'icône d'alerte
 
 // 💡 Composant pour gérer la protection des routes
 // Il vérifie si l'utilisateur est authentifié. Si ce n'est pas le cas, il redirige vers la page de connexion.
@@ -56,10 +57,17 @@ export default function App() {
         {/* 💡 Redirection par défaut vers la page de connexion */}
         <Route path="/" element={<Navigate to="/login" replace />} />
 
-        {/* 💡 Gérer les routes non trouvées (404) */}
+        {/* 💡 Gérer les routes non trouvées (404) avec une animation */}
         <Route path="*" element={
-          <div className="flex items-center justify-center min-h-screen bg-gray-100">
-            <h1 className="text-2xl font-bold text-gray-700">404: Page non trouvée</h1>
+          <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
+            {/* Animation de pulsation sur l'icône */}
+            <div className="animate-pulse text-red-500 mb-4">
+              <TriangleAlert size={80} />
+            </div>
+            <h1 className="text-4xl font-bold text-gray-800 mb-2">404: Page non trouvée</h1>
+            <p className="text-lg text-gray-600 text-center">
+              Oups ! Il semble que vous vous soyez trompé de chemin.
+            </p>
           </div>
         } />
 

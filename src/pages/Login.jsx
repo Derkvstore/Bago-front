@@ -7,14 +7,14 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false); // 💡 Nouvel état pour le spinner
+  const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage('');
-    setLoading(true); // 🌀 Démarre le loading
+    setLoading(true);
 
     try {
       const BACKEND_URL = import.meta.env.VITE_API_URL;
@@ -26,21 +26,33 @@ export default function Login() {
         body: JSON.stringify({ username, password }),
       });
 
+      // 💡 Vérifie le statut de la réponse avant de tenter de la lire en JSON
+      if (!res.ok) {
+        // Gérer spécifiquement les erreurs 404, 401, etc.
+        if (res.status === 404) {
+          setMessage('❌ Erreur: L\'API de connexion est introuvable.');
+        } else if (res.status === 401) {
+          const errorData = await res.json();
+          setMessage(`❌ ${errorData.message}`);
+        } else {
+          setMessage(`❌ Erreur ${res.status}: ${res.statusText}`);
+        }
+        return;
+      }
+
       const data = await res.json();
 
-      if (res.ok) {
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('fullName', data.fullName);
-        localStorage.setItem('username', data.username);
-        navigate('/dashboard');
-      } else {
-        setMessage(`❌ ${data.error || data.message || 'Erreur inconnue'}`);
-      }
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('fullName', data.fullName);
+      localStorage.setItem('username', data.username);
+      navigate('/dashboard');
+      
     } catch (err) {
       console.error('Erreur lors de la connexion frontend :', err);
-      setMessage('❌ Erreur serveur');
+      // 💡 Message d'erreur plus détaillé pour le catch block
+      setMessage(`❌ Erreur serveur: Impossible de se connecter à l'API. Vérifiez l'URL du backend.`);
     } finally {
-      setLoading(false); // 🛑 Stop le loading quoi qu’il arrive
+      setLoading(false);
     }
   };
 

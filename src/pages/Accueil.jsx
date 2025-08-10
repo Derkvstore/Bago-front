@@ -115,18 +115,19 @@ export default function Accueil() {
           animation: fadeInUp 0.8s ease-out forwards;
         }
 
-        @keyframes quoteFadeInUp {
-          0% {
+        /* 💡 NOUVELLE ANIMATION pour la citation: fondu et légère mise à l'échelle */
+        @keyframes quote-fade-and-scale {
+          from {
             opacity: 0;
-            transform: translateY(10px);
+            transform: translateY(10px) scale(0.98);
           }
-          100% {
+          to {
             opacity: 1;
-            transform: translateY(0);
+            transform: translateY(0) scale(1);
           }
         }
         .quote-animation {
-          animation: quoteFadeInUp 0.8s ease-out forwards;
+          animation: quote-fade-and-scale 0.8s ease-out forwards;
         }
 
         @keyframes pulse-once {
@@ -136,7 +137,6 @@ export default function Accueil() {
         }
         .animate-pulse-once { animation: pulse-once 1s ease-in-out; }
 
-        /* 💡 NOUVELLE ANIMATION pour le spinner de chargement */
         @keyframes spinner-grow {
           0% {
             transform: scale(0);
@@ -195,7 +195,6 @@ export default function Accueil() {
             </p>
           </div>
         ) : statsLoading ? (
-          // 💡 Nouveau style de chargement avec un spinner
           <div className="flex flex-col items-center justify-center p-10 mt-8">
             <div className="flex justify-center text-blue-500 mb-4">
               <div className="spinner-grow" role="status">

@@ -10,7 +10,7 @@ import {
   ArrowPathIcon,
   ArrowsRightLeftIcon
 } from '@heroicons/react/24/outline';
-import { CloudOff } from 'lucide-react'; // 💡 Nouvelle icône pour l'erreur de connexion
+import { CloudOff } from 'lucide-react'; // Icône pour l'erreur de connexion
 
 export default function Accueil() {
   const [dashboardStats, setDashboardStats] = useState({
@@ -22,7 +22,7 @@ export default function Accueil() {
   });
   const [statsLoading, setStatsLoading] = useState(true);
   const [statsError, setStatsError] = useState('');
-  const [isNetworkError, setIsNetworkError] = useState(false); // 💡 Nouvel état pour les erreurs de réseau
+  const [isNetworkError, setIsNetworkError] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
 
   const [currentQuoteIndex, setCurrentQuoteIndex] = useState(0);
@@ -50,7 +50,7 @@ export default function Accueil() {
   const fetchDashboardStats = async () => {
     setStatsLoading(true);
     setStatsError('');
-    setIsNetworkError(false); // Réinitialise l'état de l'erreur réseau à chaque appel
+    setIsNetworkError(false);
     try {
       const backendUrl = import.meta.env.PROD
         ? 'https://bago-back-production.up.railway.app'
@@ -66,7 +66,6 @@ export default function Accueil() {
       setDashboardStats(data);
     } catch (error) {
       console.error('Erreur lors du chargement des statistiques du tableau de bord:', error);
-      // 💡 Gère spécifiquement les erreurs de connexion réseau
       if (error.message.includes('Failed to fetch') || error.name === 'TypeError') {
         setIsNetworkError(true);
       } else {
@@ -79,15 +78,12 @@ export default function Accueil() {
 
   useEffect(() => {
     fetchDashboardStats();
-
     const timerId = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
-
     const quoteInterval = setInterval(() => {
       setCurrentQuoteIndex((prevIndex) => (prevIndex + 1) % quotes.length);
     }, 10000);
-
     return () => {
       clearInterval(timerId);
       clearInterval(quoteInterval);
@@ -133,14 +129,32 @@ export default function Accueil() {
           animation: quoteFadeInUp 0.8s ease-out forwards;
         }
 
-        /* 💡 NOUVELLE ANIMATION pour l'icône de déconnexion */
         @keyframes pulse-once {
           0% { transform: scale(1); opacity: 1; }
           50% { transform: scale(1.2); opacity: 0.8; }
           100% { transform: scale(1); opacity: 1; }
         }
-        .animate-pulse-once {
-          animation: pulse-once 1s ease-in-out;
+        .animate-pulse-once { animation: pulse-once 1s ease-in-out; }
+
+        /* 💡 NOUVELLE ANIMATION pour le spinner de chargement */
+        @keyframes spinner-grow {
+          0% {
+            transform: scale(0);
+          }
+          50% {
+            opacity: 1;
+            transform: none;
+          }
+        }
+        .spinner-grow {
+          display: inline-block;
+          width: 2rem;
+          height: 2rem;
+          vertical-align: -0.125em;
+          background-color: currentColor;
+          border-radius: 50%;
+          opacity: 0;
+          animation: 0.75s linear infinite spinner-grow;
         }
         `}
       </style>
@@ -169,8 +183,7 @@ export default function Accueil() {
             </div>
           </div>
         </div>
-        
-        {/* 💡 Logique de rendu conditionnel pour l'erreur de connexion */}
+
         {isNetworkError ? (
           <div className="flex flex-col items-center justify-center p-10 bg-red-50 rounded-xl shadow-lg mt-8">
             <CloudOff className="h-16 w-16 text-red-500 mb-4 animate-pulse-once" />
@@ -182,7 +195,15 @@ export default function Accueil() {
             </p>
           </div>
         ) : statsLoading ? (
-          <p className="text-gray-600 text-center">Chargement des statistiques...</p>
+          // 💡 Nouveau style de chargement avec un spinner
+          <div className="flex flex-col items-center justify-center p-10 mt-8">
+            <div className="flex justify-center text-blue-500 mb-4">
+              <div className="spinner-grow" role="status">
+                <span className="sr-only">Chargement...</span>
+              </div>
+            </div>
+            <p className="text-gray-600 text-center">Chargement des statistiques...</p>
+          </div>
         ) : statsError ? (
           <p className="text-red-600 text-center">{statsError}</p>
         ) : (

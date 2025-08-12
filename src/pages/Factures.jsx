@@ -83,7 +83,7 @@ export default function Factures() {
       const response = await axios.get(`${backendUrl}/api/products`);
       setAllAvailableProducts(response.data.filter(p => p.status === 'active'));
     } catch (error) {
-      console.error('Erreur lors du chargement des produits disponibles:', error);
+      console.error('Erreur lors du chargement des produits disponibles avertir derkv:', error);
       setStatusMessage({ type: 'error', text: `Erreur lors du chargement des produits disponibles: ${error.response?.data?.error || error.message}` });
     }
   };

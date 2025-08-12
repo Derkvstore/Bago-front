@@ -22,6 +22,54 @@ import {
   ArrowUturnLeftIcon, // For Cancel
   MagnifyingGlassIcon // For the search bar
 } from '@heroicons/react/24/outline';
+import { Spinner } from '@heroicons/react/20/solid'; // You'll need to install or define this spinner
+
+// Define a simple Spinner component if you don't have it
+const SpinnerIcon = ({ className }) => (
+  <svg
+    className={`animate-spin ${className}`}
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+  >
+    <circle
+      className="opacity-25"
+      cx="12"
+      cy="12"
+      r="10"
+      stroke="currentColor"
+      strokeWidth="4"
+    ></circle>
+    <path
+      className="opacity-75"
+      fill="currentColor"
+      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+    ></path>
+  </svg>
+);
+
+// New Apple-style loading button component
+const AppleLoadingButton = ({ children, isLoading, onClick, className, ...props }) => {
+  return (
+    <button
+      onClick={onClick}
+      className={`relative inline-flex items-center justify-center transition-all duration-200 ease-in-out
+        ${isLoading ? 'cursor-not-allowed bg-blue-400' : className || 'bg-blue-600 hover:bg-blue-700 text-white'}
+        px-4 py-2 text-sm font-medium rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
+      disabled={isLoading}
+      {...props}
+    >
+      <span className={`transition-opacity duration-200 ${isLoading ? 'opacity-0' : 'opacity-100'}`}>
+        {children}
+      </span>
+      {isLoading && (
+        <span className="absolute inset-0 flex items-center justify-center">
+          <SpinnerIcon className="h-5 w-5 text-white" />
+        </span>
+      )}
+    </button>
+  );
+};
 
 export default function SpecialOrders() {
   const [orders, setOrders] = useState([]);
@@ -30,26 +78,26 @@ export default function SpecialOrders() {
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [errorOrders, setErrorOrders] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false); // Modal for adding/editing
+  const [isFormSubmitting, setIsFormSubmitting] = useState(false); // Loading state for form submit
   const [currentOrder, setCurrentOrder] = useState(null);
   const [statusMessage, setStatusMessage] = useState({ type: '', text: '' });
-  const [searchTerm, setSearchTerm] = useState(''); // NEW: State for the search term
-  const [totalSoldBenefice, setTotalSoldBenefice] = useState(0); // NEW: State for total profit of sold orders
+  const [searchTerm, setSearchTerm] = useState('');
+  const [totalSoldBenefice, setTotalSoldBenefice] = useState(0);
 
   // States for the payment modification modal
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [isPaymentUpdating, setIsPaymentUpdating] = useState(false); // Loading state for payment update
   const [currentOrderToEditPayment, setCurrentOrderToEditPayment] = useState(null);
   const [newMontantPaye, setNewMontantPaye] = useState('');
-  const [paymentModalError, setPaymentModalError] = useState(''); // Initialisation correcte
+  const [paymentModalError, setPaymentModalError] = useState('');
 
   // States for the custom confirmation modal (for Cancel / Replace)
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmModalContent, setConfirmModalContent] = useState({ title: "", message: null });
   const [onConfirmAction, setOnConfirmAction] = useState(null);
-  const [returnReasonInput, setReturnReasonInput] = useState(''); // Used for cancellation/replacement reason
-  const [confirmModalError, setConfirmModalError] = useState(''); // Specific error for the confirmation modal
+  const [returnReasonInput, setReturnReasonInput] = useState('');
+  const [confirmModalError, setConfirmModalError] = useState('');
   const [isConfirming, setIsConfirming] = useState(false); // For confirmation button loading state
-
-  const textareaRef = useRef(null); // Reference for the reason text field
 
   // Form states for new/edit special order
   const [clientName, setClientName] = useState('');
@@ -63,12 +111,11 @@ export default function SpecialOrders() {
   const [imei, setImei] = useState('');
   const [prixAchatFournisseur, setPrixAchatFournisseur] = useState('');
   const [prixVenteClient, setPrixVenteClient] = useState('');
-  const [statut, setStatut] = useState('en_attente'); // Initial status for the form
+  const [statut, setStatut] = useState('en_attente');
   const [raisonAnnulation, setRaisonAnnulation] = useState('');
-  const [initialMontantPaye, setInitialMontantPaye] = useState(''); // For order creation
+  const [initialMontantPaye, setInitialMontantPaye] = useState('');
 
 
-  // ✅ LOGIQUE CORRIGÉE POUR GÉRER LOCAL ET PRODUCTION
   const backendUrl = import.meta.env.PROD
     ? 'https://bago-back-production.up.railway.app'
     : 'http://localhost:3001';
@@ -76,9 +123,10 @@ export default function SpecialOrders() {
   // --- Utility functions ---
   const formatCFA = (amount) => {
     if (amount === null || amount === undefined || isNaN(parseFloat(amount))) {
-      return 'N/A CFA';
+      return '0 CFA';
     }
-    return parseFloat(amount).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' CFA';
+    const number = parseFloat(amount);
+    return number.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' CFA';
   };
 
   const formatDate = (dateString) => {
@@ -104,14 +152,13 @@ export default function SpecialOrders() {
       case 'vendu': return 'bg-green-100 text-green-800';
       case 'annulé': return 'bg-red-100 text-red-800';
       case 'remplacé': return 'bg-indigo-100 text-indigo-800';
-      case 'paiement_partiel': return 'bg-orange-100 text-orange-800'; // New status
+      case 'paiement_partiel': return 'bg-orange-100 text-orange-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
 
 
   // --- Data fetching functions ---
-
   const fetchSpecialOrders = async () => {
     setLoadingOrders(true);
     setErrorOrders(null);
@@ -134,7 +181,6 @@ export default function SpecialOrders() {
       setFournisseurs(fournisseursRes.data);
     } catch (err) {
       console.error('Error loading clients or suppliers:', err);
-      // Handle error, but do not block order display
     }
   };
 
@@ -143,7 +189,6 @@ export default function SpecialOrders() {
     fetchClientsAndFournisseurs();
   }, []);
 
-  // Effect to auto-fill client phone number
   useEffect(() => {
     const foundClient = clients.find(c => c.nom && clientName && c.nom.toLowerCase() === clientName.toLowerCase());
     if (foundClient) {
@@ -155,7 +200,6 @@ export default function SpecialOrders() {
 
 
   // --- Special order management functions (CRUD & Status) ---
-
   const resetForm = () => {
     setClientName('');
     setClientPhone('');
@@ -170,11 +214,13 @@ export default function SpecialOrders() {
     setPrixVenteClient('');
     setStatut('en_attente');
     setRaisonAnnulation('');
-    setInitialMontantPaye(''); // Reset for creation
+    setInitialMontantPaye('');
+    setPaymentModalError('');
   };
 
   const openAddModal = () => {
     resetForm();
+    setCurrentOrder(null);
     setIsModalOpen(true);
   };
 
@@ -193,16 +239,18 @@ export default function SpecialOrders() {
     setPrixVenteClient(order.prix_vente_client);
     setStatut(order.statut);
     setRaisonAnnulation(order.raison_annulation || '');
-    setInitialMontantPaye(order.montant_paye); // Load existing paid amount
+    setInitialMontantPaye(order.montant_paye);
     setIsModalOpen(true);
   };
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     setStatusMessage({ type: '', text: '' });
+    setIsFormSubmitting(true);
 
     const orderData = {
       client_nom: clientName,
+      client_telephone: clientPhone, // Add client phone to data
       fournisseur_nom: fournisseurName,
       marque,
       modele,
@@ -212,16 +260,16 @@ export default function SpecialOrders() {
       imei: imei || null,
       prix_achat_fournisseur: parseFloat(prixAchatFournisseur),
       prix_vente_client: parseFloat(prixVenteClient),
-      montant_paye: parseFloat(initialMontantPaye || 0) // Include initial paid amount
+      montant_paye: parseFloat(initialMontantPaye || 0)
     };
 
     try {
       if (currentOrder) {
-        // For editing, use the status update route if applicable
-        // Note: This form does not update all order fields, only status and reason
-        await axios.put(`${backendUrl}/api/special-orders/${currentOrder.order_id}/update-status`, {
-            statut: statut,
-            raison_annulation: raisonAnnulation
+        // Here, we update the existing order with the form data.
+        await axios.put(`${backendUrl}/api/special-orders/${currentOrder.order_id}`, {
+          ...orderData,
+          statut: statut, // Include status in update
+          raison_annulation: raisonAnnulation // Include reason in update
         });
         setStatusMessage({ type: 'success', text: 'Special order updated successfully!' });
       } else {
@@ -229,38 +277,39 @@ export default function SpecialOrders() {
         setStatusMessage({ type: 'success', text: 'Special order added successfully!' });
       }
       setIsModalOpen(false);
-      fetchSpecialOrders(); // Refresh special orders list
+      fetchSpecialOrders();
     } catch (err) {
       console.error('Error submitting special order:', err);
       setStatusMessage({ type: 'error', text: `Error: ${err.response?.data?.error || err.message}` });
+    } finally {
+      setIsFormSubmitting(false);
     }
   };
 
-  // Generic function to update status, called by specific actions
   const updateOrderStatus = async (orderId, newStatus, reason = null) => {
     setStatusMessage({ type: '', text: '' });
     setConfirmModalError('');
-    setIsConfirming(true); // Activate confirmation button loading state
+    setIsConfirming(true);
     try {
-      const res = await axios.put(`${backendUrl}/api/special-orders/${orderId}/update-status`, {
+      await axios.put(`${backendUrl}/api/special-orders/${orderId}/update-status`, {
         statut: newStatus,
         raison_annulation: reason
       });
       setStatusMessage({ type: 'success', text: `Order status updated to "${newStatus}"!` });
-      closeConfirmModal(); // Close confirmation modal
-      fetchSpecialOrders(); // Refresh list
+      closeConfirmModal();
+      fetchSpecialOrders();
     } catch (err) {
       console.error(`Error updating order status ${orderId}:`, err);
       setConfirmModalError(`Error updating status: ${err.response?.data?.error || err.message}`);
     } finally {
-      setIsConfirming(false); // Deactivate confirmation state
+      setIsConfirming(false);
     }
   };
 
   // --- Payment modal management functions ---
   const handleUpdatePaymentClick = (order) => {
     setCurrentOrderToEditPayment(order);
-    setNewMontantPaye(order.montant_paye);
+    setNewMontantPaye(order.montant_paye.toString()); // Ensure it's a string for input field
     setPaymentModalError('');
     setShowPaymentModal(true);
   };
@@ -269,20 +318,27 @@ export default function SpecialOrders() {
     e.preventDefault();
     setPaymentModalError('');
     setStatusMessage({ type: '', text: '' });
+    setIsPaymentUpdating(true);
 
-    if (!currentOrderToEditPayment) return;
+    if (!currentOrderToEditPayment) {
+      setIsPaymentUpdating(false);
+      return;
+    }
 
     const orderId = currentOrderToEditPayment.order_id;
     const prixVenteClient = parseFloat(currentOrderToEditPayment.prix_vente_client);
     const parsedNewMontantPaye = parseFloat(newMontantPaye);
 
+    // Validation checks
     if (isNaN(parsedNewMontantPaye) || parsedNewMontantPaye < 0) {
-      setPaymentModalError('The paid amount must be a positive number or zero.');
+      setPaymentModalError('Le montant payé doit être un nombre positif ou zéro.');
+      setIsPaymentUpdating(false);
       return;
     }
 
     if (parsedNewMontantPaye > prixVenteClient) {
-      setPaymentModalError(`The paid amount (${formatCFA(parsedNewMontantPaye)}) cannot be greater than the order's selling price (${formatCFA(prixVenteClient)}).`);
+      setPaymentModalError(`Le montant payé (${formatCFA(parsedNewMontantPaye)}) ne peut pas être supérieur au prix de vente (${formatCFA(prixVenteClient)}).`);
+      setIsPaymentUpdating(false);
       return;
     }
 
@@ -290,22 +346,22 @@ export default function SpecialOrders() {
       await axios.put(`${backendUrl}/api/special-orders/${orderId}/update-payment`, {
         new_montant_paye: parsedNewMontantPaye
       });
-      setStatusMessage({ type: 'success', text: 'Special order payment updated successfully!' });
+      setStatusMessage({ type: 'success', text: 'Paiement de la commande spéciale mis à jour avec succès !' });
       setShowPaymentModal(false);
-      fetchSpecialOrders(); // Refresh list
+      fetchSpecialOrders();
     } catch (err) {
       console.error('Error updating payment:', err);
-      setPaymentModalError(err.response?.data?.error || 'Error updating payment.');
+      setPaymentModalError(err.response?.data?.error || 'Erreur lors de la mise à jour du paiement.');
+    } finally {
+      setIsPaymentUpdating(false);
     }
   };
 
   // --- Status actions with confirmation functions ---
-
   const openConfirmModal = (title, message, action) => {
     setConfirmModalContent({ title, message });
     setOnConfirmAction(() => (currentReason) => action(currentReason));
-    setConfirmModalError(''); // Reset modal error
-    setReturnReasonInput(''); // Reset reason field
+    setConfirmModalError('');
     setIsConfirming(false);
     setShowConfirmModal(true);
   };
@@ -320,31 +376,30 @@ export default function SpecialOrders() {
   };
 
   const handleCancelSpecialOrderClick = (order) => {
+    setReturnReasonInput('Annulé par client'); // Auto-fill reason
     openConfirmModal(
-      "Confirm order cancellation",
+      "Confirmer l'annulation de la commande",
       (
         <>
           <p className="text-gray-700 mb-2 text-sm md:text-base">
-            Are you sure you want to cancel the special order for "{order.marque} {order.modele}" from client "{order.client_nom}"?
+            Êtes-vous sûr de vouloir annuler la commande spéciale pour "{order.marque} {order.modele}" du client "{order.client_nom}" ?
             {order.statut === 'vendu' && (
               <span className="font-semibold text-red-600 block mt-1 text-xs md:text-sm">
-                Warning: This order is already sold. Cancellation may require manual refund management.
+                Attention : Cette commande est déjà vendue. L'annulation peut nécessiter une gestion manuelle des remboursements.
               </span>
             )}
           </p>
           <label htmlFor="reasonInput" className="block text-xs font-medium text-gray-700 mb-1 md:text-sm">
-            Reason for cancellation:
+            Raison de l'annulation :
           </label>
           <textarea
-            ref={textareaRef}
             id="reasonInput"
             value={returnReasonInput}
             onChange={(e) => setReturnReasonInput(e.target.value)}
-            rows={2} // Reduced default number of rows
+            rows={2}
             className="w-full border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition duration-200"
-            placeholder="Ex: Client changed mind..."
+            placeholder="Ex : Le client a changé d'avis..."
             required
-            autoFocus
           ></textarea>
           {confirmModalError && (
             <p className="text-red-500 text-xs mt-1">{confirmModalError}</p>
@@ -356,26 +411,25 @@ export default function SpecialOrders() {
   };
 
   const handleReplaceSpecialOrderClick = (order) => {
+    setReturnReasonInput('Produit défectueux - Client'); // Auto-fill reason
     openConfirmModal(
-      "Confirm order replacement",
+      "Confirmer le remplacement de la commande",
       (
         <>
           <p className="text-gray-700 mb-2 text-sm md:text-base">
-            Are you sure you want to mark the special order for "{order.marque} {order.modele}" as "Replaced"?
+            Êtes-vous sûr de vouloir marquer la commande spéciale pour "{order.marque} {order.modele}" comme "Remplacée" ?
           </p>
           <label htmlFor="reasonInput" className="block text-xs font-medium text-gray-700 mb-1 md:text-sm">
-            Reason for replacement:
+            Raison du remplacement :
           </label>
           <textarea
-            ref={textareaRef}
             id="reasonInput"
             value={returnReasonInput}
             onChange={(e) => setReturnReasonInput(e.target.value)}
-            rows={2} // Reduced default number of rows
+            rows={2}
             className="w-full border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition duration-200"
-            placeholder="Ex: Defective product..."
+            placeholder="Ex : Produit défectueux..."
             required
-            autoFocus
           ></textarea>
           {confirmModalError && (
             <p className="text-red-500 text-xs mt-1">{confirmModalError}</p>
@@ -386,17 +440,7 @@ export default function SpecialOrders() {
     );
   };
 
-  // Focus on the confirmation modal textarea
-  useEffect(() => {
-    if (showConfirmModal && textareaRef.current) {
-      const timer = setTimeout(() => {
-        textareaRef.current.focus();
-      }, 50);
-      return () => clearTimeout(timer);
-    }
-  }, [showConfirmModal, returnReasonInput]);
 
-  // Filter orders by client, supplier, brand, model, or IMEI
   const filteredOrders = orders.filter(order => {
     const searchLower = searchTerm.toLowerCase();
     return (
@@ -408,7 +452,6 @@ export default function SpecialOrders() {
     );
   });
 
-  // NEW: Calculate total profit for sold orders
   useEffect(() => {
     const calculatedBenefice = filteredOrders.reduce((sum, order) => {
       if (order.statut === 'vendu') {
@@ -423,34 +466,31 @@ export default function SpecialOrders() {
 
 
   return (
-    <div className="p-4 sm:p-6 bg-gray-50 min-h-screen font-sans"> {/* Reduced padding for mobile */}
-      <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4 sm:mb-6 text-center">Gestion des Commandes Spéciales</h2> {/* Adjusted title size */}
+    <div className="p-4 sm:p-6 bg-gray-50 min-h-screen font-sans">
+      <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4 sm:mb-6 text-center">Gestion des Commandes Spéciales</h2>
 
-      {/* Display total profit of sold orders - MOVED HERE */}
-      <div className="mt-4 p-3 sm:p-4 bg-green-100 border border-green-400 text-green-800 rounded-lg shadow-md text-center mb-4 sm:mb-6"> {/* Adjusted padding and margin */}
-        <p className="text-lg sm:text-xl font-semibold">Bénéfice Total des Commandes Spéciales Vendues :</p> {/* Adjusted text size */}
-        <p className="text-2xl sm:text-3xl font-extrabold mt-1 sm:mt-2">{formatCFA(totalSoldBenefice)}</p> {/* Adjusted amount size */}
+      <div className="mt-4 p-3 sm:p-4 bg-green-100 border border-green-400 text-green-800 rounded-lg shadow-md text-center mb-4 sm:mb-6">
+        <p className="text-lg sm:text-xl font-semibold">Bénéfice Total des Commandes Spéciales Vendues :</p>
+        <p className="text-2xl sm:text-3xl font-extrabold mt-1 sm:mt-2">{formatCFA(totalSoldBenefice)}</p>
       </div>
 
       {statusMessage.text && (
         <div className={`mb-3 p-2 sm:p-3 rounded-md flex items-center justify-between text-xs sm:text-sm
           ${statusMessage.type === 'success' ? 'bg-green-100 text-green-700 border border-green-400' : 'bg-red-100 text-red-700 border border-red-400'}`}>
           <span>
-            {statusMessage.type === 'success' ? <CheckCircleIcon className="h-4 w-4 inline mr-1" /> : <XCircleIcon className="h-4 w-4 inline mr-1" />} {/* Smaller icons */}
+            {statusMessage.type === 'success' ? <CheckCircleIcon className="h-4 w-4 inline mr-1" /> : <XCircleIcon className="h-4 w-4 inline mr-1" />}
             {statusMessage.text}
           </span>
           <button onClick={() => setStatusMessage({ type: '', text: '' })} className="ml-2">
-            <XMarkIcon className="h-4 w-4" /> {/* Smaller icon */}
+            <XMarkIcon className="h-4 w-4" />
           </button>
         </div>
       )}
 
-      {/* Search and add section - Improved responsiveness */}
-      <div className="flex flex-col md:flex-row items-center md:justify-between space-y-3 md:space-y-0 mb-4 sm:mb-6"> {/* Reduced spacing */}
-        {/* Multi-criteria search bar */}
-        <div className="relative w-full md:max-w-xs"> {/* w-full on mobile */}
-          <span className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none"> {/* Reduced icon padding */}
-            <MagnifyingGlassIcon className="w-3 h-3 text-gray-400" /> {/* Smaller icon */}
+      <div className="flex flex-col md:flex-row items-center md:justify-between space-y-3 md:space-y-0 mb-4 sm:mb-6">
+        <div className="relative w-full md:max-w-xs">
+          <span className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+            <MagnifyingGlassIcon className="w-3 h-3 text-gray-400" />
           </span>
           <input
             type="text"
@@ -465,7 +505,7 @@ export default function SpecialOrders() {
           onClick={openAddModal}
           className="flex items-center px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition-colors w-full md:w-auto justify-center"
         >
-          <PlusIcon className="h-4 w-4 mr-1.5" /> {/* Smaller icon */}
+          <PlusIcon className="h-4 w-4 mr-1.5" />
           Ajouter une Commande Spéciale
         </button>
       </div>
@@ -478,10 +518,10 @@ export default function SpecialOrders() {
         <p className="text-center text-gray-600 text-sm">Aucune commande spéciale trouvée.</p>
       ) : (
         <div className="overflow-x-auto bg-white rounded-lg shadow-lg border border-gray-200">
-          <table className="min-w-full divide-y divide-gray-200 text-xs"> {/* Reduced table text size */}
+          <table className="min-w-full divide-y divide-gray-200 text-xs">
             <thead className="bg-gray-100 text-gray-700 uppercase tracking-wider">
               <tr>
-                <th className="px-2 py-2 text-left">Client</th> {/* Reduced padding */}
+                <th className="px-2 py-2 text-left">Client</th>
                 <th className="px-2 py-2 text-left">Fournisseur</th>
                 <th className="px-2 py-2 text-left">Article</th>
                 <th className="px-2 py-2 text-left">IMEI</th>
@@ -497,12 +537,12 @@ export default function SpecialOrders() {
             <tbody className="divide-y divide-gray-100">
               {filteredOrders.map((order) => (
                 <tr key={order.order_id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-2 py-2 whitespace-nowrap"> {/* Reduced padding */}
+                  <td className="px-2 py-2 whitespace-nowrap">
                     <div className="font-medium text-gray-900 flex items-center">
-                      <UserIcon className="h-3 w-3 mr-1 text-gray-500" /> {order.client_nom} {/* Smaller icon */}
+                      <UserIcon className="h-3 w-3 mr-1 text-gray-500" /> {order.client_nom}
                     </div>
-                    <div className="text-gray-500 text-[10px] flex items-center"> {/* Very small text size */}
-                      <PhoneIcon className="h-2.5 w-2.5 mr-1" /> {order.client_telephone || 'N/A'} {/* Smaller icon */}
+                    <div className="text-gray-500 text-[10px] flex items-center">
+                      <PhoneIcon className="h-2.5 w-2.5 mr-1" /> {order.client_telephone || 'N/A'}
                     </div>
                   </td>
                   <td className="px-2 py-2 whitespace-nowrap">
@@ -538,7 +578,6 @@ export default function SpecialOrders() {
                   </td>
                   <td className="px-2 py-2 text-center whitespace-nowrap">
                     <div className="flex space-x-1 justify-center">
-                      {/* Edit Payment Button */}
                       {(order.statut !== 'vendu' && order.statut !== 'annulé' && order.statut !== 'remplacé') && (
                         <button
                           onClick={() => handleUpdatePaymentClick(order)}
@@ -548,8 +587,6 @@ export default function SpecialOrders() {
                           <CurrencyDollarIcon className="h-4 w-4" />
                         </button>
                       )}
-
-                      {/* Cancel Button (visible if order is not already cancelled or replaced) */}
                       {(order.statut !== 'annulé' && order.statut !== 'remplacé') && (
                         <button
                           onClick={() => handleCancelSpecialOrderClick(order)}
@@ -559,8 +596,6 @@ export default function SpecialOrders() {
                           <ArrowUturnLeftIcon className="h-4 w-4" />
                         </button>
                       )}
-
-                      {/* Mark as Ordered Button (if pending) */}
                       {order.statut === 'en_attente' && (
                         <button
                           onClick={() => updateOrderStatus(order.order_id, 'commandé')}
@@ -570,7 +605,6 @@ export default function SpecialOrders() {
                           <TruckIcon className="h-4 w-4" />
                         </button>
                       )}
-                      {/* Mark as Received Button (if ordered) */}
                       {order.statut === 'commandé' && (
                         <button
                           onClick={() => updateOrderStatus(order.order_id, 'reçu')}
@@ -580,7 +614,6 @@ export default function SpecialOrders() {
                           <ArchiveBoxIcon className="h-4 w-4" />
                         </button>
                       )}
-                      {/* Mark as Sold Button (if received or partial payment AND fully paid) */}
                       {(order.statut === 'reçu' || order.statut === 'paiement_partiel') && parseFloat(order.montant_restant) <= 0 && (
                         <button
                           onClick={() => updateOrderStatus(order.order_id, 'vendu')}
@@ -590,7 +623,6 @@ export default function SpecialOrders() {
                           <CheckCircleIcon className="h-4 w-4" />
                         </button>
                       )}
-                      {/* Replace Button (Return) - visible if sold, received or partial payment */}
                       {(order.statut === 'vendu' || order.statut === 'reçu' || order.statut === 'paiement_partiel') && (
                         <button
                           onClick={() => handleReplaceSpecialOrderClick(order)}
@@ -609,7 +641,6 @@ export default function SpecialOrders() {
         </div>
       )}
 
-      {/* Modal for adding/editing a special order */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex justify-center items-center p-2 sm:p-4 z-50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-xl p-4 sm:p-6">
@@ -617,7 +648,7 @@ export default function SpecialOrders() {
               {currentOrder ? 'Modifier la Commande Spéciale' : 'Ajouter une Nouvelle Commande Spéciale'}
             </h3>
             <form onSubmit={handleFormSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-              {/* Client */}
+              {/* Form fields... */}
               <div>
                 <label htmlFor="clientName" className="block text-xs sm:text-sm font-medium text-gray-700">Nom du Client</label>
                 <input
@@ -637,7 +668,6 @@ export default function SpecialOrders() {
                 {clientPhone && <p className="text-[10px] text-gray-500 mt-0.5">Téléphone: {clientPhone}</p>}
               </div>
 
-              {/* Fournisseur */}
               <div>
                 <label htmlFor="fournisseurName" className="block text-xs sm:text-sm font-medium text-gray-700">Nom du Fournisseur</label>
                 <input
@@ -656,7 +686,6 @@ export default function SpecialOrders() {
                 </datalist>
               </div>
 
-              {/* Marque */}
               <div>
                 <label htmlFor="marque" className="block text-xs sm:text-sm font-medium text-gray-700">Marque</label>
                 <input
@@ -669,7 +698,6 @@ export default function SpecialOrders() {
                 />
               </div>
 
-              {/* Modèle */}
               <div>
                 <label htmlFor="modele" className="block text-xs sm:text-sm font-medium text-gray-700">Modèle</label>
                 <input
@@ -682,7 +710,6 @@ export default function SpecialOrders() {
                 />
               </div>
 
-              {/* Stockage */}
               <div>
                 <label htmlFor="stockage" className="block text-xs sm:text-sm font-medium text-gray-700">Stockage (Go)</label>
                 <input
@@ -694,7 +721,6 @@ export default function SpecialOrders() {
                 />
               </div>
 
-              {/* Type */}
               <div>
                 <label htmlFor="type" className="block text-xs sm:text-sm font-medium text-gray-700">Type</label>
                 <select
@@ -711,7 +737,6 @@ export default function SpecialOrders() {
                 </select>
               </div>
 
-              {/* Type Carton (if applicable) */}
               {type === 'CARTON' && (
                 <div>
                   <label htmlFor="typeCarton" className="block text-xs sm:text-sm font-medium text-gray-700">Type Carton</label>
@@ -725,9 +750,7 @@ export default function SpecialOrders() {
                 </div>
               )}
 
-              {/* IMEI */}
               <div>
-
                 <label htmlFor="imei" className="block text-xs sm:text-sm font-medium text-gray-700">IMEI (optional)</label>
                 <input
                   type="text"
@@ -739,7 +762,6 @@ export default function SpecialOrders() {
                 />
               </div>
 
-              {/* Supplier Purchase Price */}
               <div>
                 <label htmlFor="prixAchatFournisseur" className="block text-xs sm:text-sm font-medium text-gray-700">Prix Achat Fournisseur (CFA)</label>
                 <input
@@ -754,7 +776,6 @@ export default function SpecialOrders() {
                 />
               </div>
 
-              {/* Client Selling Price */}
               <div>
                 <label htmlFor="prixVenteClient" className="block text-xs sm:text-sm font-medium text-gray-700">Prix Vente Client (CFA)</label>
                 <input
@@ -769,7 +790,6 @@ export default function SpecialOrders() {
                 />
               </div>
 
-              {/* Initial Paid Amount (only for creation) */}
               {!currentOrder && (
                 <div>
                   <label htmlFor="initialMontantPaye" className="block text-xs sm:text-sm font-medium text-gray-700">Montant Payé Initial (CFA)</label>
@@ -785,28 +805,28 @@ export default function SpecialOrders() {
                 </div>
               )}
 
-              {/* Form action buttons */}
               <div className="md:col-span-2 flex justify-end space-x-2 mt-4 sm:mt-6">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
                   className="px-3 py-1.5 text-sm bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors"
+                  disabled={isFormSubmitting}
                 >
                   Annuler
                 </button>
-                <button
+                <AppleLoadingButton
+                  isLoading={isFormSubmitting}
                   type="submit"
-                  className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
                 >
                   {currentOrder ? 'Mettre à jour' : 'Ajouter la Commande'}
-                </button>
+                </AppleLoadingButton>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* Payment modification modal */}
       {showPaymentModal && currentOrderToEditPayment && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex justify-center items-center p-2 sm:p-4 z-50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-sm p-4 sm:p-6">
@@ -848,22 +868,23 @@ export default function SpecialOrders() {
                   type="button"
                   onClick={() => setShowPaymentModal(false)}
                   className="px-3 py-1.5 text-sm bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors"
+                  disabled={isPaymentUpdating}
                 >
                   Annuler
                 </button>
-                <button
+                <AppleLoadingButton
+                  isLoading={isPaymentUpdating}
                   type="submit"
-                  className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
                 >
                   Confirmer le Paiement
-                </button>
+                </AppleLoadingButton>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* Custom confirmation modal (for cancellation/replacement) */}
       {showConfirmModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center p-2 sm:p-4 z-50 no-print">
           <div className="bg-white p-4 sm:p-6 rounded-lg shadow-xl max-w-xs sm:max-w-sm w-full relative z-[60] pointer-events-auto">
@@ -884,17 +905,17 @@ export default function SpecialOrders() {
               >
                 Annuler
               </button>
-              <button
+              <AppleLoadingButton
+                isLoading={isConfirming}
                 onClick={() => onConfirmAction(returnReasonInput)}
-                className={`px-3 py-1.5 text-sm rounded-md transition ${
-                  isConfirming || (confirmModalContent.message && typeof confirmModalContent.message !== 'string' && !returnReasonInput.trim())
-                    ? 'bg-red-400 cursor-not-allowed'
-                    : 'bg-red-600 text-white hover:bg-red-700'
-                }`}
-                disabled={isConfirming || (confirmModalContent.message && typeof confirmModalContent.message !== 'string' && !returnReasonInput.trim())}
+                className={`
+                  ${onConfirmAction.name.includes("Cancel") ? 'bg-red-600 hover:bg-red-700' : 'bg-indigo-600 hover:bg-indigo-700'}
+                  text-white
+                `}
+                disabled={isConfirming || !returnReasonInput.trim()}
               >
-                {isConfirming ? 'Confirmation...' : 'Confirmer'}
-              </button>
+                Confirmer
+              </AppleLoadingButton>
             </div>
           </div>
         </div>

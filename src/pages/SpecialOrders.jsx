@@ -1,12 +1,9 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import {
   PlusIcon,
-  PencilIcon,
-  TrashIcon,
   CheckCircleIcon,
   XCircleIcon,
-  ExclamationCircleIcon,
   TruckIcon,
   ArchiveBoxIcon,
   PhoneIcon,
@@ -16,59 +13,36 @@ import {
   CubeIcon,
   ClockIcon,
   XMarkIcon,
-  ArrowPathIcon, // For replacement (Return)
-  ClipboardDocumentListIcon, // Icon for special orders
-  CurrencyDollarIcon, // For payment icon
-  ArrowUturnLeftIcon, // For Cancel
-  MagnifyingGlassIcon // For the search bar
+  ArrowPathIcon,
+  CurrencyDollarIcon,
+  ArrowUturnLeftIcon,
+  MagnifyingGlassIcon
 } from '@heroicons/react/24/outline';
-import { Spinner } from '@heroicons/react/20/solid'; // You'll need to install or define this spinner
 
-// Define a simple Spinner component if you don't have it
-const SpinnerIcon = ({ className }) => (
-  <svg
-    className={`animate-spin ${className}`}
-    xmlns="http://www.w3.org/2000/svg"
-    fill="none"
-    viewBox="0 0 24 24"
-  >
-    <circle
-      className="opacity-25"
-      cx="12"
-      cy="12"
-      r="10"
-      stroke="currentColor"
-      strokeWidth="4"
-    ></circle>
-    <path
-      className="opacity-75"
-      fill="currentColor"
-      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-    ></path>
-  </svg>
-);
+const MARQUES = ["iPhone", "Samsung", "iPad", "AirPod"];
+const MODELES = {
+  iPhone: [
+    "X", "XR", "XS", "XS MAX", "11 SIMPLE", "11 PRO", "11 PRO MAX",
+    "12 SIMPLE", "12 MINI", "12 PRO", "12 PRO MAX",
+    "13 SIMPLE", "13 MINI", "13 PRO", "13 PRO MAX",
+    "14 SIMPLE", "14 PLUS", "14 PRO", "14 PRO MAX",
+    "15 SIMPLE", "15 PLUS", "15 PRO", "15 PRO MAX",
+    "16 SIMPLE", "16 PLUS", "16 PRO", "16 PRO MAX",
+  ],
+  Samsung: ["Galaxy S21", "Galaxy S22", "Galaxy A14", "Galaxy Note 20"],
+  iPad: ["Air 10éme Gen", "Air 11éme Gen", "Pro", "Mini"],
+  AirPod: ["1ère Gen", "2ème Gen", "3ème Gen", "4ème Gen", "Pro 1ème Gen,", "2ème Gen",],
+};
+const STOCKAGES = ["64 Go", "128 Go", "256 Go", "512 Go", "1 To"];
 
-// New Apple-style loading button component
-const AppleLoadingButton = ({ children, isLoading, onClick, className, ...props }) => {
-  return (
-    <button
-      onClick={onClick}
-      className={`relative inline-flex items-center justify-center transition-all duration-200 ease-in-out
-        ${isLoading ? 'cursor-not-allowed bg-blue-400' : className || 'bg-blue-600 hover:bg-blue-700 text-white'}
-        px-4 py-2 text-sm font-medium rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
-      disabled={isLoading}
-      {...props}
-    >
-      <span className={`transition-opacity duration-200 ${isLoading ? 'opacity-0' : 'opacity-100'}`}>
-        {children}
-      </span>
-      {isLoading && (
-        <span className="absolute inset-0 flex items-center justify-center">
-          <SpinnerIcon className="h-5 w-5 text-white" />
-        </span>
-      )}
-    </button>
-  );
+const STATUS_DISPLAY_MAP = {
+  'en_attente': 'EN COURS',
+  'commandé': 'COMMANDÉ',
+  'reçu': 'REÇU',
+  'vendu': 'VENDU',
+  'paiement_partiel': 'PARTIEL',
+  'annulé': 'ANNULÉ',
+  'remplacé': 'REMPLACÉ',
 };
 
 export default function SpecialOrders() {
@@ -77,29 +51,29 @@ export default function SpecialOrders() {
   const [fournisseurs, setFournisseurs] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [errorOrders, setErrorOrders] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false); // Modal for adding/editing
-  const [isFormSubmitting, setIsFormSubmitting] = useState(false); // Loading state for form submit
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentOrder, setCurrentOrder] = useState(null);
   const [statusMessage, setStatusMessage] = useState({ type: '', text: '' });
   const [searchTerm, setSearchTerm] = useState('');
   const [totalSoldBenefice, setTotalSoldBenefice] = useState(0);
 
-  // States for the payment modification modal
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [isPaymentUpdating, setIsPaymentUpdating] = useState(false); // Loading state for payment update
   const [currentOrderToEditPayment, setCurrentOrderToEditPayment] = useState(null);
   const [newMontantPaye, setNewMontantPaye] = useState('');
   const [paymentModalError, setPaymentModalError] = useState('');
 
-  // States for the custom confirmation modal (for Cancel / Replace)
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmModalContent, setConfirmModalContent] = useState({ title: "", message: null });
   const [onConfirmAction, setOnConfirmAction] = useState(null);
   const [returnReasonInput, setReturnReasonInput] = useState('');
   const [confirmModalError, setConfirmModalError] = useState('');
-  const [isConfirming, setIsConfirming] = useState(false); // For confirmation button loading state
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [isLoadingPayment, setIsLoadingPayment] = useState(false);
+  const [isFormSubmitting, setIsFormSubmitting] = useState(false);
+  const [statusUpdateLoading, setStatusUpdateLoading] = useState({});
 
-  // Form states for new/edit special order
+  const textareaRef = useRef(null);
+
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
   const [fournisseurName, setFournisseurName] = useState('');
@@ -115,18 +89,25 @@ export default function SpecialOrders() {
   const [raisonAnnulation, setRaisonAnnulation] = useState('');
   const [initialMontantPaye, setInitialMontantPaye] = useState('');
 
-
   const backendUrl = import.meta.env.PROD
     ? 'https://bago-back-production.up.railway.app'
     : 'http://localhost:3001';
 
-  // --- Utility functions ---
+  const formatNumberWithSpaces = (number) => {
+    if (!number) return '';
+    return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  };
+
+  const parseNumberFromFormattedString = (str) => {
+    return str.replace(/\s/g, '');
+  };
+
   const formatCFA = (amount) => {
     if (amount === null || amount === undefined || isNaN(parseFloat(amount))) {
-      return '0 CFA';
+      return 'N/A FCFA';
     }
-    const number = parseFloat(amount);
-    return number.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' CFA';
+    const formattedAmount = parseFloat(amount).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    return formattedAmount.replace(/,/g, ' ') + ' FCFA';
   };
 
   const formatDate = (dateString) => {
@@ -157,8 +138,6 @@ export default function SpecialOrders() {
     }
   };
 
-
-  // --- Data fetching functions ---
   const fetchSpecialOrders = async () => {
     setLoadingOrders(true);
     setErrorOrders(null);
@@ -198,8 +177,6 @@ export default function SpecialOrders() {
     }
   }, [clientName, clients]);
 
-
-  // --- Special order management functions (CRUD & Status) ---
   const resetForm = () => {
     setClientName('');
     setClientPhone('');
@@ -215,12 +192,10 @@ export default function SpecialOrders() {
     setStatut('en_attente');
     setRaisonAnnulation('');
     setInitialMontantPaye('');
-    setPaymentModalError('');
   };
 
   const openAddModal = () => {
     resetForm();
-    setCurrentOrder(null);
     setIsModalOpen(true);
   };
 
@@ -250,7 +225,6 @@ export default function SpecialOrders() {
 
     const orderData = {
       client_nom: clientName,
-      client_telephone: clientPhone, // Add client phone to data
       fournisseur_nom: fournisseurName,
       marque,
       modele,
@@ -258,18 +232,16 @@ export default function SpecialOrders() {
       type,
       type_carton: typeCarton || null,
       imei: imei || null,
-      prix_achat_fournisseur: parseFloat(prixAchatFournisseur),
-      prix_vente_client: parseFloat(prixVenteClient),
-      montant_paye: parseFloat(initialMontantPaye || 0)
+      prix_achat_fournisseur: parseFloat(parseNumberFromFormattedString(prixAchatFournisseur)),
+      prix_vente_client: parseFloat(parseNumberFromFormattedString(prixVenteClient)),
+      montant_paye: parseFloat(parseNumberFromFormattedString(initialMontantPaye || 0))
     };
 
     try {
       if (currentOrder) {
-        // Here, we update the existing order with the form data.
-        await axios.put(`${backendUrl}/api/special-orders/${currentOrder.order_id}`, {
-          ...orderData,
-          statut: statut, // Include status in update
-          raison_annulation: raisonAnnulation // Include reason in update
+        await axios.put(`${backendUrl}/api/special-orders/${currentOrder.order_id}/update-status`, {
+            statut: statut,
+            raison_annulation: raisonAnnulation
         });
         setStatusMessage({ type: 'success', text: 'Special order updated successfully!' });
       } else {
@@ -289,27 +261,27 @@ export default function SpecialOrders() {
   const updateOrderStatus = async (orderId, newStatus, reason = null) => {
     setStatusMessage({ type: '', text: '' });
     setConfirmModalError('');
-    setIsConfirming(true);
+    setStatusUpdateLoading(prev => ({ ...prev, [orderId]: true }));
     try {
       await axios.put(`${backendUrl}/api/special-orders/${orderId}/update-status`, {
         statut: newStatus,
         raison_annulation: reason
       });
-      setStatusMessage({ type: 'success', text: `Order status updated to "${newStatus}"!` });
+      setStatusMessage({ type: 'success', text: `Le statut de la commande a été mis à jour à "${STATUS_DISPLAY_MAP[newStatus]}"!` });
       closeConfirmModal();
       fetchSpecialOrders();
     } catch (err) {
       console.error(`Error updating order status ${orderId}:`, err);
-      setConfirmModalError(`Error updating status: ${err.response?.data?.error || err.message}`);
+      setConfirmModalError(`Erreur lors de la mise à jour du statut: ${err.response?.data?.error || err.message}`);
     } finally {
+      setStatusUpdateLoading(prev => ({ ...prev, [orderId]: false }));
       setIsConfirming(false);
     }
   };
 
-  // --- Payment modal management functions ---
   const handleUpdatePaymentClick = (order) => {
     setCurrentOrderToEditPayment(order);
-    setNewMontantPaye(order.montant_paye.toString()); // Ensure it's a string for input field
+    setNewMontantPaye(formatNumberWithSpaces(order.montant_paye));
     setPaymentModalError('');
     setShowPaymentModal(true);
   };
@@ -318,27 +290,23 @@ export default function SpecialOrders() {
     e.preventDefault();
     setPaymentModalError('');
     setStatusMessage({ type: '', text: '' });
-    setIsPaymentUpdating(true);
+    setIsLoadingPayment(true);
 
-    if (!currentOrderToEditPayment) {
-      setIsPaymentUpdating(false);
-      return;
-    }
+    if (!currentOrderToEditPayment) return;
 
     const orderId = currentOrderToEditPayment.order_id;
     const prixVenteClient = parseFloat(currentOrderToEditPayment.prix_vente_client);
-    const parsedNewMontantPaye = parseFloat(newMontantPaye);
+    const parsedNewMontantPaye = parseFloat(parseNumberFromFormattedString(newMontantPaye));
 
-    // Validation checks
     if (isNaN(parsedNewMontantPaye) || parsedNewMontantPaye < 0) {
-      setPaymentModalError('Le montant payé doit être un nombre positif ou zéro.');
-      setIsPaymentUpdating(false);
+      setPaymentModalError('Le montant payé doit être un nombre positif ou nul.');
+      setIsLoadingPayment(false);
       return;
     }
 
     if (parsedNewMontantPaye > prixVenteClient) {
-      setPaymentModalError(`Le montant payé (${formatCFA(parsedNewMontantPaye)}) ne peut pas être supérieur au prix de vente (${formatCFA(prixVenteClient)}).`);
-      setIsPaymentUpdating(false);
+      setPaymentModalError(`Le montant payé (${formatCFA(parsedNewMontantPaye)}) ne peut pas être supérieur au prix de vente de la commande (${formatCFA(prixVenteClient)}).`);
+      setIsLoadingPayment(false);
       return;
     }
 
@@ -346,22 +314,22 @@ export default function SpecialOrders() {
       await axios.put(`${backendUrl}/api/special-orders/${orderId}/update-payment`, {
         new_montant_paye: parsedNewMontantPaye
       });
-      setStatusMessage({ type: 'success', text: 'Paiement de la commande spéciale mis à jour avec succès !' });
+      setStatusMessage({ type: 'success', text: 'Le paiement de la commande spéciale a été mis à jour avec succès !' });
       setShowPaymentModal(false);
       fetchSpecialOrders();
     } catch (err) {
       console.error('Error updating payment:', err);
       setPaymentModalError(err.response?.data?.error || 'Erreur lors de la mise à jour du paiement.');
     } finally {
-      setIsPaymentUpdating(false);
+      setIsLoadingPayment(false);
     }
   };
 
-  // --- Status actions with confirmation functions ---
   const openConfirmModal = (title, message, action) => {
     setConfirmModalContent({ title, message });
     setOnConfirmAction(() => (currentReason) => action(currentReason));
     setConfirmModalError('');
+    setReturnReasonInput('');
     setIsConfirming(false);
     setShowConfirmModal(true);
   };
@@ -376,7 +344,6 @@ export default function SpecialOrders() {
   };
 
   const handleCancelSpecialOrderClick = (order) => {
-    setReturnReasonInput('Annulé par client'); // Auto-fill reason
     openConfirmModal(
       "Confirmer l'annulation de la commande",
       (
@@ -385,20 +352,21 @@ export default function SpecialOrders() {
             Êtes-vous sûr de vouloir annuler la commande spéciale pour "{order.marque} {order.modele}" du client "{order.client_nom}" ?
             {order.statut === 'vendu' && (
               <span className="font-semibold text-red-600 block mt-1 text-xs md:text-sm">
-                Attention : Cette commande est déjà vendue. L'annulation peut nécessiter une gestion manuelle des remboursements.
+                Attention : Cette commande est déjà vendue. L'annulation peut nécessiter un remboursement manuel.
               </span>
             )}
           </p>
           <label htmlFor="reasonInput" className="block text-xs font-medium text-gray-700 mb-1 md:text-sm">
-            Raison de l'annulation :
+            Raison de l'annulation:
           </label>
           <textarea
+            ref={textareaRef}
             id="reasonInput"
             value={returnReasonInput}
             onChange={(e) => setReturnReasonInput(e.target.value)}
             rows={2}
             className="w-full border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition duration-200"
-            placeholder="Ex : Le client a changé d'avis..."
+            placeholder="Ex: Le client a changé d'avis..."
             required
           ></textarea>
           {confirmModalError && (
@@ -411,7 +379,6 @@ export default function SpecialOrders() {
   };
 
   const handleReplaceSpecialOrderClick = (order) => {
-    setReturnReasonInput('Produit défectueux - Client'); // Auto-fill reason
     openConfirmModal(
       "Confirmer le remplacement de la commande",
       (
@@ -420,15 +387,16 @@ export default function SpecialOrders() {
             Êtes-vous sûr de vouloir marquer la commande spéciale pour "{order.marque} {order.modele}" comme "Remplacée" ?
           </p>
           <label htmlFor="reasonInput" className="block text-xs font-medium text-gray-700 mb-1 md:text-sm">
-            Raison du remplacement :
+            Raison du remplacement:
           </label>
           <textarea
+            ref={textareaRef}
             id="reasonInput"
             value={returnReasonInput}
             onChange={(e) => setReturnReasonInput(e.target.value)}
             rows={2}
             className="w-full border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition duration-200"
-            placeholder="Ex : Produit défectueux..."
+            placeholder="Ex: Produit défectueux..."
             required
           ></textarea>
           {confirmModalError && (
@@ -439,7 +407,18 @@ export default function SpecialOrders() {
       (reason) => updateOrderStatus(order.order_id, 'remplacé', reason)
     );
   };
-
+  
+  // Suppression du useEffect qui posait problème
+  /*
+  useEffect(() => {
+    if (showConfirmModal && textareaRef.current) {
+      const timer = setTimeout(() => {
+        textareaRef.current.focus();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [showConfirmModal, returnReasonInput]);
+  */
 
   const filteredOrders = orders.filter(order => {
     const searchLower = searchTerm.toLowerCase();
@@ -466,16 +445,16 @@ export default function SpecialOrders() {
 
 
   return (
-    <div className="p-4 sm:p-6 bg-gray-50 min-h-screen font-sans">
-      <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4 sm:mb-6 text-center">Gestion des Commandes Spéciales</h2>
+    <div className="p-2 sm:p-4 md:p-6 bg-gray-50 min-h-screen font-sans">
+      <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 mb-4 text-center">Gestion des Commandes Spéciales</h2>
 
-      <div className="mt-4 p-3 sm:p-4 bg-green-100 border border-green-400 text-green-800 rounded-lg shadow-md text-center mb-4 sm:mb-6">
-        <p className="text-lg sm:text-xl font-semibold">Bénéfice Total des Commandes Spéciales Vendues :</p>
-        <p className="text-2xl sm:text-3xl font-extrabold mt-1 sm:mt-2">{formatCFA(totalSoldBenefice)}</p>
+      <div className="mt-4 p-3 sm:p-4 bg-green-100 border border-green-400 text-green-800 rounded-lg shadow-md text-center mb-4">
+        <p className="text-sm sm:text-lg md:text-xl font-semibold">Bénéfice Total des Commandes Spéciales Vendues :</p>
+        <p className="text-xl sm:text-2xl md:text-3xl font-extrabold mt-1">{formatCFA(totalSoldBenefice)}</p>
       </div>
 
       {statusMessage.text && (
-        <div className={`mb-3 p-2 sm:p-3 rounded-md flex items-center justify-between text-xs sm:text-sm
+        <div className={`mb-3 p-2 rounded-md flex items-center justify-between text-xs sm:text-sm
           ${statusMessage.type === 'success' ? 'bg-green-100 text-green-700 border border-green-400' : 'bg-red-100 text-red-700 border border-red-400'}`}>
           <span>
             {statusMessage.type === 'success' ? <CheckCircleIcon className="h-4 w-4 inline mr-1" /> : <XCircleIcon className="h-4 w-4 inline mr-1" />}
@@ -487,25 +466,25 @@ export default function SpecialOrders() {
         </div>
       )}
 
-      <div className="flex flex-col md:flex-row items-center md:justify-between space-y-3 md:space-y-0 mb-4 sm:mb-6">
+      <div className="flex flex-col md:flex-row items-center md:justify-between space-y-3 md:space-y-0 mb-4">
         <div className="relative w-full md:max-w-xs">
-          <span className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
-            <MagnifyingGlassIcon className="w-3 h-3 text-gray-400" />
+          <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <MagnifyingGlassIcon className="w-4 h-4 text-gray-400" />
           </span>
           <input
             type="text"
-            placeholder="Rechercher par client, fournisseur, marque, modèle ou IMEI"
+            placeholder="Rechercher par client, fournisseur, marque..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 border border-gray-300 rounded-full bg-white text-xs shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+            className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-full bg-white text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
           />
         </div>
 
         <button
           onClick={openAddModal}
-          className="flex items-center px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition-colors w-full md:w-auto justify-center"
+          className="flex items-center px-4 py-2 text-sm bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition-colors w-full md:w-auto justify-center"
         >
-          <PlusIcon className="h-4 w-4 mr-1.5" />
+          <PlusIcon className="h-5 w-5 mr-2" />
           Ajouter une Commande Spéciale
         </button>
       </div>
@@ -518,73 +497,74 @@ export default function SpecialOrders() {
         <p className="text-center text-gray-600 text-sm">Aucune commande spéciale trouvée.</p>
       ) : (
         <div className="overflow-x-auto bg-white rounded-lg shadow-lg border border-gray-200">
-          <table className="min-w-full divide-y divide-gray-200 text-xs">
+          <table className="min-w-full divide-y divide-gray-200 text-sm">
             <thead className="bg-gray-100 text-gray-700 uppercase tracking-wider">
               <tr>
-                <th className="px-2 py-2 text-left">Client</th>
-                <th className="px-2 py-2 text-left">Fournisseur</th>
-                <th className="px-2 py-2 text-left">Article</th>
-                <th className="px-2 py-2 text-left">IMEI</th>
-                <th className="px-2 py-2 text-right">Prix Achat</th>
-                <th className="px-2 py-2 text-right">Prix Vente</th>
-                <th className="px-2 py-2 text-right">Montant Payé</th>
-                <th className="px-2 py-2 text-right">Reste à Payer</th>
-                <th className="px-2 py-2 text-left">Date Commande</th>
-                <th className="px-2 py-2 text-center">Statut</th>
-                <th className="px-2 py-2 text-center">Actions</th>
+                <th className="px-4 py-3 text-left">Client</th>
+                <th className="px-4 py-3 text-left hidden sm:table-cell">Fournisseur</th>
+                <th className="px-4 py-3 text-left">Article</th>
+                <th className="px-4 py-3 text-left">IMEI</th>
+                <th className="px-4 py-3 text-right hidden sm:table-cell">Prix Achat</th>
+                <th className="px-4 py-3 text-right">Prix Vente</th>
+                <th className="px-4 py-3 text-right">Montant Payé</th>
+                <th className="px-4 py-3 text-right hidden sm:table-cell">Reste à Payer</th>
+                <th className="px-4 py-3 text-left hidden md:table-cell">Date</th>
+                <th className="px-4 py-3 text-center">Statut</th>
+                <th className="px-4 py-3 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filteredOrders.map((order) => (
                 <tr key={order.order_id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-2 py-2 whitespace-nowrap">
+                  <td className="px-4 py-4 whitespace-nowrap">
                     <div className="font-medium text-gray-900 flex items-center">
-                      <UserIcon className="h-3 w-3 mr-1 text-gray-500" /> {order.client_nom}
+                      <UserIcon className="h-4 w-4 mr-1 text-gray-500" /> {order.client_nom}
                     </div>
-                    <div className="text-gray-500 text-[10px] flex items-center">
-                      <PhoneIcon className="h-2.5 w-2.5 mr-1" /> {order.client_telephone || 'N/A'}
+                    <div className="text-gray-500 text-xs flex items-center hidden md:block">
+                      <PhoneIcon className="h-3 w-3 mr-1" /> {order.client_telephone || 'N/A'}
                     </div>
                   </td>
-                  <td className="px-2 py-2 whitespace-nowrap">
+                  <td className="px-4 py-4 whitespace-nowrap hidden sm:table-cell">
                     <div className="flex items-center">
-                      <BuildingStorefrontIcon className="h-3 w-3 mr-1 text-gray-500" /> {order.fournisseur_nom}
+                      <BuildingStorefrontIcon className="h-4 w-4 mr-1 text-gray-500" /> {order.fournisseur_nom}
                     </div>
                   </td>
-                  <td className="px-2 py-2">
+                  <td className="px-4 py-4">
                     <div className="font-medium text-gray-900 flex items-center">
-                      <TagIcon className="h-3 w-3 mr-1 text-gray-500" /> {order.marque} {order.modele}
+                      <TagIcon className="h-4 w-4 mr-1 text-gray-500" /> {order.marque} {order.modele}
                     </div>
-                    <div className="text-gray-500 text-[10px] flex items-center">
-                      <CubeIcon className="h-2.5 w-2.5 mr-1" /> {order.stockage || 'N/A'} ({order.type}{order.type_carton ? ` ${order.type_carton}` : ''})
+                    <div className="text-gray-500 text-xs flex items-center hidden md:block">
+                      <CubeIcon className="h-3 w-3 mr-1" /> {order.stockage || 'N/A'} ({order.type}{order.type_carton ? ` ${order.type_carton}` : ''})
                     </div>
                   </td>
-                  <td className="px-2 py-2 whitespace-nowrap">{order.imei || 'N/A'}</td>
-                  <td className="px-2 py-2 text-right whitespace-nowrap">{formatCFA(order.prix_achat_fournisseur)}</td>
-                  <td className="px-2 py-2 text-right whitespace-nowrap font-semibold text-blue-700">{formatCFA(order.prix_vente_client)}</td>
-                  <td className="px-2 py-2 text-right whitespace-nowrap">{formatCFA(order.montant_paye)}</td>
-                  <td className="px-2 py-2 text-right whitespace-nowrap font-semibold text-red-600">{formatCFA(order.montant_restant)}</td>
-                  <td className="px-2 py-2 whitespace-nowrap">
+                  <td className="px-4 py-4 whitespace-nowrap">{order.imei || 'N/A'}</td>
+                  <td className="px-4 py-4 text-right whitespace-nowrap hidden sm:table-cell">{formatCFA(order.prix_achat_fournisseur)}</td>
+                  <td className="px-4 py-4 text-right whitespace-nowrap font-semibold text-blue-700">{formatCFA(order.prix_vente_client)}</td>
+                  <td className="px-4 py-4 text-right whitespace-nowrap">{formatCFA(order.montant_paye)}</td>
+                  <td className="px-4 py-4 text-right whitespace-nowrap font-semibold text-red-600 hidden sm:table-cell">{formatCFA(order.montant_restant)}</td>
+                  <td className="px-4 py-4 whitespace-nowrap hidden md:table-cell">
                     <div className="flex items-center">
-                      <ClockIcon className="h-3 w-3 mr-1 text-gray-500" /> {formatDate(order.date_commande)}
+                      <ClockIcon className="h-4 w-4 mr-1 text-gray-500" /> {formatDate(order.date_commande)}
                     </div>
                   </td>
-                  <td className="px-2 py-2 text-center">
-                    <span className={`px-1.5 inline-flex text-[9px] leading-4 font-semibold rounded-full ${getStatusColor(order.statut)}`}>
-                      {order.statut}
+                  <td className="px-4 py-4 text-center">
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(order.statut)}`}>
+                      {STATUS_DISPLAY_MAP[order.statut] || order.statut}
                     </span>
                     {order.raison_annulation && (
-                      <p className="text-[8px] text-gray-500 mt-0.5">Raison: {order.raison_annulation}</p>
+                      <p className="text-xs text-gray-500 mt-1">Raison: {order.raison_annulation}</p>
                     )}
                   </td>
-                  <td className="px-2 py-2 text-center whitespace-nowrap">
+                  <td className="px-4 py-4 text-center whitespace-nowrap">
                     <div className="flex space-x-1 justify-center">
                       {(order.statut !== 'vendu' && order.statut !== 'annulé' && order.statut !== 'remplacé') && (
                         <button
                           onClick={() => handleUpdatePaymentClick(order)}
                           className="p-1 rounded-full bg-yellow-100 text-yellow-600 hover:bg-yellow-200 transition-colors"
                           title="Modifier Paiement"
+                          disabled={isLoadingPayment}
                         >
-                          <CurrencyDollarIcon className="h-4 w-4" />
+                          <CurrencyDollarIcon className="h-5 w-5" />
                         </button>
                       )}
                       {(order.statut !== 'annulé' && order.statut !== 'remplacé') && (
@@ -592,8 +572,13 @@ export default function SpecialOrders() {
                           onClick={() => handleCancelSpecialOrderClick(order)}
                           className="p-1 rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
                           title="Annuler la commande"
+                          disabled={statusUpdateLoading[order.order_id]}
                         >
-                          <ArrowUturnLeftIcon className="h-4 w-4" />
+                          {statusUpdateLoading[order.order_id] ? (
+                            <ArrowPathIcon className="h-5 w-5 animate-spin" />
+                          ) : (
+                            <ArrowUturnLeftIcon className="h-5 w-5" />
+                          )}
                         </button>
                       )}
                       {order.statut === 'en_attente' && (
@@ -601,8 +586,13 @@ export default function SpecialOrders() {
                           onClick={() => updateOrderStatus(order.order_id, 'commandé')}
                           className="p-1 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors"
                           title="Marquer comme Commandé"
+                          disabled={statusUpdateLoading[order.order_id]}
                         >
-                          <TruckIcon className="h-4 w-4" />
+                          {statusUpdateLoading[order.order_id] ? (
+                            <ArrowPathIcon className="h-5 w-5 animate-spin" />
+                          ) : (
+                            <TruckIcon className="h-5 w-5" />
+                          )}
                         </button>
                       )}
                       {order.statut === 'commandé' && (
@@ -610,8 +600,13 @@ export default function SpecialOrders() {
                           onClick={() => updateOrderStatus(order.order_id, 'reçu')}
                           className="p-1 rounded-full bg-purple-100 text-purple-600 hover:bg-purple-200 transition-colors"
                           title="Marquer comme Reçu"
+                          disabled={statusUpdateLoading[order.order_id]}
                         >
-                          <ArchiveBoxIcon className="h-4 w-4" />
+                          {statusUpdateLoading[order.order_id] ? (
+                            <ArrowPathIcon className="h-5 w-5 animate-spin" />
+                          ) : (
+                            <ArchiveBoxIcon className="h-5 w-5" />
+                          )}
                         </button>
                       )}
                       {(order.statut === 'reçu' || order.statut === 'paiement_partiel') && parseFloat(order.montant_restant) <= 0 && (
@@ -619,8 +614,13 @@ export default function SpecialOrders() {
                           onClick={() => updateOrderStatus(order.order_id, 'vendu')}
                           className="p-1 rounded-full bg-green-100 text-green-600 hover:bg-green-200 transition-colors"
                           title="Marquer comme Vendu"
+                          disabled={statusUpdateLoading[order.order_id]}
                         >
-                          <CheckCircleIcon className="h-4 w-4" />
+                          {statusUpdateLoading[order.order_id] ? (
+                            <ArrowPathIcon className="h-5 w-5 animate-spin" />
+                          ) : (
+                            <CheckCircleIcon className="h-5 w-5" />
+                          )}
                         </button>
                       )}
                       {(order.statut === 'vendu' || order.statut === 'reçu' || order.statut === 'paiement_partiel') && (
@@ -628,8 +628,13 @@ export default function SpecialOrders() {
                           onClick={() => handleReplaceSpecialOrderClick(order)}
                           className="p-1 rounded-full bg-indigo-100 text-indigo-600 hover:bg-indigo-200 transition-colors"
                           title="Marquer comme Remplacé (Retourner)"
+                          disabled={statusUpdateLoading[order.order_id]}
                         >
-                          <ArrowPathIcon className="h-4 w-4" />
+                          {statusUpdateLoading[order.order_id] ? (
+                            <ArrowPathIcon className="h-5 w-5 animate-spin" />
+                          ) : (
+                            <ArrowPathIcon className="h-5 w-5" />
+                          )}
                         </button>
                       )}
                     </div>
@@ -642,13 +647,12 @@ export default function SpecialOrders() {
       )}
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex justify-center items-center p-2 sm:p-4 z-50">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex justify-center items-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-xl p-4 sm:p-6">
-            <h3 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4 sm:mb-6 text-center">
+            <h3 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4 text-center">
               {currentOrder ? 'Modifier la Commande Spéciale' : 'Ajouter une Nouvelle Commande Spéciale'}
             </h3>
             <form onSubmit={handleFormSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-              {/* Form fields... */}
               <div>
                 <label htmlFor="clientName" className="block text-xs sm:text-sm font-medium text-gray-700">Nom du Client</label>
                 <input
@@ -658,7 +662,7 @@ export default function SpecialOrders() {
                   onChange={(e) => setClientName(e.target.value)}
                   list="client-names"
                   required
-                  className="mt-0.5 block w-full border border-gray-300 rounded-md shadow-sm p-1.5 text-sm focus:ring-blue-500 focus:border-blue-500"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm focus:ring-blue-500 focus:border-blue-500"
                 />
                 <datalist id="client-names">
                   {clients.map(client => (
@@ -677,7 +681,7 @@ export default function SpecialOrders() {
                   onChange={(e) => setFournisseurName(e.target.value)}
                   list="fournisseur-names"
                   required
-                  className="mt-0.5 block w-full border border-gray-300 rounded-md shadow-sm p-1.5 text-sm focus:ring-blue-500 focus:border-blue-500"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm focus:ring-blue-500 focus:border-blue-500"
                 />
                 <datalist id="fournisseur-names">
                   {fournisseurs.map(fournisseur => (
@@ -692,10 +696,19 @@ export default function SpecialOrders() {
                   type="text"
                   id="marque"
                   value={marque}
-                  onChange={(e) => setMarque(e.target.value)}
+                  onChange={(e) => {
+                    setMarque(e.target.value);
+                    setModele('');
+                  }}
+                  list="marque-list"
                   required
-                  className="mt-0.5 block w-full border border-gray-300 rounded-md shadow-sm p-1.5 text-sm focus:ring-blue-500 focus:border-blue-500"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm focus:ring-blue-500 focus:border-blue-500"
                 />
+                <datalist id="marque-list">
+                  {MARQUES.map(item => (
+                    <option key={item} value={item} />
+                  ))}
+                </datalist>
               </div>
 
               <div>
@@ -705,9 +718,16 @@ export default function SpecialOrders() {
                   id="modele"
                   value={modele}
                   onChange={(e) => setModele(e.target.value)}
+                  list="modele-list"
                   required
-                  className="mt-0.5 block w-full border border-gray-300 rounded-md shadow-sm p-1.5 text-sm focus:ring-blue-500 focus:border-blue-500"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+                  disabled={!marque}
                 />
+                <datalist id="modele-list">
+                  {marque && MODELES[marque] && MODELES[marque].map(item => (
+                    <option key={item} value={item} />
+                  ))}
+                </datalist>
               </div>
 
               <div>
@@ -717,8 +737,14 @@ export default function SpecialOrders() {
                   id="stockage"
                   value={stockage}
                   onChange={(e) => setStockage(e.target.value)}
-                  className="mt-0.5 block w-full border border-gray-300 rounded-md shadow-sm p-1.5 text-sm focus:ring-blue-500 focus:border-blue-500"
+                  list="stockage-list"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm focus:ring-blue-500 focus:border-blue-500"
                 />
+                <datalist id="stockage-list">
+                  {STOCKAGES.map(item => (
+                    <option key={item} value={item} />
+                  ))}
+                </datalist>
               </div>
 
               <div>
@@ -728,7 +754,7 @@ export default function SpecialOrders() {
                   value={type}
                   onChange={(e) => setType(e.target.value)}
                   required
-                  className="mt-0.5 block w-full border border-gray-300 rounded-md shadow-sm p-1.5 text-sm focus:ring-blue-500 focus:border-blue-500"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="TELEPHONE">TÉLÉPHONE</option>
                   <option value="ACCESSOIRE">ACCESSOIRE</option>
@@ -745,7 +771,7 @@ export default function SpecialOrders() {
                     id="typeCarton"
                     value={typeCarton}
                     onChange={(e) => setTypeCarton(e.target.value)}
-                    className="mt-0.5 block w-full border border-gray-300 rounded-md shadow-sm p-1.5 text-sm focus:ring-blue-500 focus:border-blue-500"
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
               )}
@@ -758,35 +784,41 @@ export default function SpecialOrders() {
                   value={imei}
                   onChange={(e) => setImei(e.target.value)}
                   maxLength="6"
-                  className="mt-0.5 block w-full border border-gray-300 rounded-md shadow-sm p-1.5 text-sm focus:ring-blue-500 focus:border-blue-500"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
               <div>
                 <label htmlFor="prixAchatFournisseur" className="block text-xs sm:text-sm font-medium text-gray-700">Prix Achat Fournisseur (CFA)</label>
                 <input
-                  type="number"
+                  type="text"
                   id="prixAchatFournisseur"
                   value={prixAchatFournisseur}
-                  onChange={(e) => setPrixAchatFournisseur(e.target.value)}
+                  onChange={(e) => {
+                    const value = parseNumberFromFormattedString(e.target.value);
+                    if (!isNaN(value)) {
+                      setPrixAchatFournisseur(formatNumberWithSpaces(value));
+                    }
+                  }}
                   required
-                  min="0"
-                  step="1"
-                  className="mt-0.5 block w-full border border-gray-300 rounded-md shadow-sm p-1.5 text-sm focus:ring-blue-500 focus:border-blue-500"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
               <div>
                 <label htmlFor="prixVenteClient" className="block text-xs sm:text-sm font-medium text-gray-700">Prix Vente Client (CFA)</label>
                 <input
-                  type="number"
+                  type="text"
                   id="prixVenteClient"
                   value={prixVenteClient}
-                  onChange={(e) => setPrixVenteClient(e.target.value)}
+                  onChange={(e) => {
+                    const value = parseNumberFromFormattedString(e.target.value);
+                    if (!isNaN(value)) {
+                      setPrixVenteClient(formatNumberWithSpaces(value));
+                    }
+                  }}
                   required
-                  min="0"
-                  step="1"
-                  className="mt-0.5 block w-full border border-gray-300 rounded-md shadow-sm p-1.5 text-sm focus:ring-blue-500 focus:border-blue-500"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
@@ -794,33 +826,40 @@ export default function SpecialOrders() {
                 <div>
                   <label htmlFor="initialMontantPaye" className="block text-xs sm:text-sm font-medium text-gray-700">Montant Payé Initial (CFA)</label>
                   <input
-                    type="number"
+                    type="text"
                     id="initialMontantPaye"
                     value={initialMontantPaye}
-                    onChange={(e) => setInitialMontantPaye(e.target.value)}
-                    min="0"
-                    step="1"
-                    className="mt-0.5 block w-full border border-gray-300 rounded-md shadow-sm p-1.5 text-sm focus:ring-blue-500 focus:border-blue-500"
+                    onChange={(e) => {
+                      const value = parseNumberFromFormattedString(e.target.value);
+                      if (!isNaN(value)) {
+                        setInitialMontantPaye(formatNumberWithSpaces(value));
+                      }
+                    }}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
               )}
 
-              <div className="md:col-span-2 flex justify-end space-x-2 mt-4 sm:mt-6">
+              <div className="md:col-span-2 flex justify-end space-x-2 mt-4">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-3 py-1.5 text-sm bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors"
+                  className="px-4 py-2 text-sm bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors"
                   disabled={isFormSubmitting}
                 >
                   Annuler
                 </button>
-                <AppleLoadingButton
-                  isLoading={isFormSubmitting}
+                <button
                   type="submit"
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                  disabled={isFormSubmitting}
                 >
-                  {currentOrder ? 'Mettre à jour' : 'Ajouter la Commande'}
-                </AppleLoadingButton>
+                  {isFormSubmitting ? (
+                    <ArrowPathIcon className="h-5 w-5 animate-spin mx-auto" />
+                  ) : (
+                    currentOrder ? 'Mettre à jour' : 'Ajouter la Commande'
+                  )}
+                </button>
               </div>
             </form>
           </div>
@@ -828,57 +867,63 @@ export default function SpecialOrders() {
       )}
 
       {showPaymentModal && currentOrderToEditPayment && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex justify-center items-center p-2 sm:p-4 z-50">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex justify-center items-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-sm p-4 sm:p-6">
-            <h3 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4 sm:mb-6 text-center">Modifier Paiement Commande Spéciale</h3>
+            <h3 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4 text-center">Modifier Paiement Commande Spéciale</h3>
             <form onSubmit={handleConfirmUpdatePayment}>
-              <div className="mb-3 sm:mb-4">
-                <p className="text-xs sm:text-sm text-gray-700 mb-1 sm:mb-2">
+              <div className="mb-4">
+                <p className="text-sm text-gray-700 mb-2">
                   Client: <span className="font-semibold">{currentOrderToEditPayment.client_nom}</span>
                 </p>
-                <p className="text-xs sm:text-sm text-gray-700 mb-1 sm:mb-2">
+                <p className="text-sm text-gray-700 mb-2">
                   Article: <span className="font-semibold">{currentOrderToEditPayment.marque} {currentOrderToEditPayment.modele}</span>
                 </p>
-                <p className="text-xs sm:text-sm text-gray-700 mb-1 sm:mb-2">
+                <p className="text-sm text-gray-700 mb-2">
                   Prix de Vente Total: <span className="font-semibold">{formatCFA(currentOrderToEditPayment.prix_vente_client)}</span>
                 </p>
-                <p className="text-xs sm:text-sm text-gray-700 mb-2 sm:mb-4">
+                <p className="text-sm text-gray-700 mb-4">
                   Montant Actuellement Payé: <span className="font-semibold">{formatCFA(currentOrderToEditPayment.montant_paye)}</span>
                 </p>
-
-                <label htmlFor="newMontantPaye" className="block text-xs sm:text-sm font-medium text-gray-700">Nouveau Montant Payé Total (CFA)</label>
+                <label htmlFor="newMontantPaye" className="block text-sm font-medium text-gray-700">Nouveau Montant Payé Total (FCFA)</label>
                 <input
-                  type="number"
+                  type="text"
                   id="newMontantPaye"
                   value={newMontantPaye}
-                  onChange={(e) => setNewMontantPaye(e.target.value)}
+                  onChange={(e) => {
+                    const value = parseNumberFromFormattedString(e.target.value);
+                    if (!isNaN(value)) {
+                      setNewMontantPaye(formatNumberWithSpaces(value));
+                    }
+                  }}
                   required
-                  min="0"
-                  step="1"
-                  className="mt-0.5 block w-full border border-gray-300 rounded-md shadow-sm p-1.5 text-sm focus:ring-blue-500 focus:border-blue-500"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
               {paymentModalError && (
-                <p className="text-red-600 text-xs sm:text-sm mb-3 sm:mb-4">{paymentModalError}</p>
+                <p className="text-red-600 text-sm mb-4">{paymentModalError}</p>
               )}
 
-              <div className="flex justify-end space-x-2 mt-4 sm:mt-6">
+              <div className="flex justify-end space-x-2 mt-4">
                 <button
                   type="button"
                   onClick={() => setShowPaymentModal(false)}
-                  className="px-3 py-1.5 text-sm bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors"
-                  disabled={isPaymentUpdating}
+                  className="px-4 py-2 text-sm bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors"
+                  disabled={isLoadingPayment}
                 >
                   Annuler
                 </button>
-                <AppleLoadingButton
-                  isLoading={isPaymentUpdating}
+                <button
                   type="submit"
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                  disabled={isLoadingPayment}
                 >
-                  Confirmer le Paiement
-                </AppleLoadingButton>
+                  {isLoadingPayment ? (
+                    <ArrowPathIcon className="h-5 w-5 animate-spin mx-auto" />
+                  ) : (
+                    'Confirmer le Paiement'
+                  )}
+                </button>
               </div>
             </form>
           </div>
@@ -886,36 +931,40 @@ export default function SpecialOrders() {
       )}
 
       {showConfirmModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center p-2 sm:p-4 z-50 no-print">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center p-4 z-50 no-print">
           <div className="bg-white p-4 sm:p-6 rounded-lg shadow-xl max-w-xs sm:max-w-sm w-full relative z-[60] pointer-events-auto">
-            <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">{confirmModalContent.title}</h3>
+            <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-3">{confirmModalContent.title}</h3>
             {typeof confirmModalContent.message === 'string' ? (
-              <p className="text-sm text-gray-700 mb-4 sm:mb-6">{confirmModalContent.message}</p>
+              <p className="text-sm text-gray-700 mb-4">{confirmModalContent.message}</p>
             ) : (
-              <div className="text-sm text-gray-700 mb-4 sm:mb-6">{confirmModalContent.message}</div>
+              <div className="text-sm text-gray-700 mb-4">{confirmModalContent.message}</div>
             )}
             {confirmModalError && (
-              <p className="text-red-500 text-xs mt-1 sm:mt-2">{confirmModalError}</p>
+              <p className="text-red-500 text-xs mt-1">{confirmModalError}</p>
             )}
-            <div className="flex justify-end space-x-2 sm:space-x-4">
+            <div className="flex justify-end space-x-2">
               <button
                 onClick={closeConfirmModal}
-                className="px-3 py-1.5 text-sm bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400 transition"
+                className="px-4 py-2 text-sm bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400 transition"
                 disabled={isConfirming}
               >
                 Annuler
               </button>
-              <AppleLoadingButton
-                isLoading={isConfirming}
+              <button
                 onClick={() => onConfirmAction(returnReasonInput)}
-                className={`
-                  ${onConfirmAction.name.includes("Cancel") ? 'bg-red-600 hover:bg-red-700' : 'bg-indigo-600 hover:bg-indigo-700'}
-                  text-white
-                `}
-                disabled={isConfirming || !returnReasonInput.trim()}
+                className={`px-4 py-2 text-sm rounded-md transition ${
+                  isConfirming || (confirmModalContent.message && typeof confirmModalContent.message !== 'string' && !returnReasonInput.trim())
+                    ? 'bg-red-400 cursor-not-allowed'
+                    : 'bg-red-600 text-white hover:bg-red-700'
+                }`}
+                disabled={isConfirming || (confirmModalContent.message && typeof confirmModalContent.message !== 'string' && !returnReasonInput.trim())}
               >
-                Confirmer
-              </AppleLoadingButton>
+                {isConfirming ? (
+                  <ArrowPathIcon className="h-5 w-5 animate-spin mx-auto" />
+                ) : (
+                  'Confirmer'
+                )}
+              </button>
             </div>
           </div>
         </div>

@@ -23,7 +23,8 @@ export default function RetoursMobiles() {
 
   // ✅ LOGIQUE CORRIGÉE POUR GÉRER LOCAL ET PRODUCTION
   const backendUrl = import.meta.env.PROD
-    ? 'https://bago-back-production.up.railway.app'
+    ?  'https://bago-back-production.up.railway.app'
+
     : 'http://localhost:3001';
 
   const openConfirmModal = (title, message, action) => {

@@ -43,7 +43,7 @@ export default function Benefices() {
     try {
       // ✅ LOGIQUE CORRIGÉE POUR GÉRER LOCAL ET PRODUCTION
       const backendUrl = import.meta.env.PROD
-        ? 'https://bago-back-production.up.railway.app'
+        ?'https://bago-back-production.up.railway.app'
         : 'http://localhost:3001';
 
       let url = `${backendUrl}/api/benefices`;

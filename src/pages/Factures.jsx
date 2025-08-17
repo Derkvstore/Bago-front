@@ -43,7 +43,7 @@ export default function Factures() {
 
   // ✅ LOGIQUE CORRIGÉE POUR GÉRER LOCAL ET PRODUCTION
   const backendUrl = import.meta.env.PROD
-    ?    'https://bago-back-production.up.railway.app'
+    ?  'https://bago-back-production.up.railway.app'
     : 'http://localhost:3001';
 
   // Nouvelle fonction pour un formatage plus clair et cohérent
@@ -83,7 +83,7 @@ export default function Factures() {
       const response = await axios.get(`${backendUrl}/api/products`);
       setAllAvailableProducts(response.data.filter(p => p.status === 'active'));
     } catch (error) {
-      console.error('Erreur lors du chargement des produits disponibles avertir derkv:', error);
+      console.error('Erreur lors du chargement des produits disponibles:', error);
       setStatusMessage({ type: 'error', text: `Erreur lors du chargement des produits disponibles: ${error.response?.data?.error || error.message}` });
     }
   };

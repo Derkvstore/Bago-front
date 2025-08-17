@@ -30,8 +30,8 @@ export default function Accueil() {
   const [currentQuoteIndex, setCurrentQuoteIndex] = useState(0);
 
   const quotes = [
-    "VAN CHOCO 🌟, l'univers des mobiles authentiques. L'innovation à portée de main.",
-    "VAN CHOCO 🌐 : Le monde de la mobile authentique, à portée de clic."
+    "YATT ELECTRO SERVICES 🌟, l'univers des mobiles authentiques. L'innovation à portée de main.",
+    "YATT ELECTRO SERVICES 🌐 : Le monde de la mobile authentique, à portée de clic."
   ];
 
   const navigate = useNavigate();

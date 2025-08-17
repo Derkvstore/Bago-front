@@ -68,7 +68,7 @@ export default function Login() {
         <div className="flex justify-center mb-6">
           <img
             src="/logo.png"
-            alt="Logo Niangadou ELECTRO"
+            alt="Logo YATTASSAYE"
             className="w-20 h-20 rounded-full object-cover shadow"
           />
         </div>

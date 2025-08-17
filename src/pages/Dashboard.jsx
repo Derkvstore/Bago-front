@@ -42,6 +42,7 @@ import Benefices from '../pages/Benefices.jsx';
 import RapportJournalier from './RapportJournalier.jsx';
 import SpecialOrders from '../pages/SpecialOrders.jsx';
 import FacturesConsolidees from './FacturesConsolidees.jsx';
+import logo from '../assets/logo.png';
 
 // J'ai mis à jour ce tableau pour inclure "Accueil"
 const sections = [
@@ -210,7 +211,8 @@ export default function Dashboard() {
             >
               <Bars3Icon className="h-6 w-6" />
             </button>
-            <h1 className="text-xl sm:text-2xl font-semibold text-blue-700 mr-4 dark:text-white transition-colors duration-300 truncate">I STORE VAN CHOCO</h1>
+           <img src={logo} alt="NIANGADOU ELECTRO Logo" className="h-10 w-10 mr-2" />
+            <h1 className="text-xl sm:text-2xl font-semibold text-blue-700 mr-4 dark:text-white transition-colors duration-300 truncate">YATTASSAYE ELECTRONIQUE</h1>
           </div>
 
           {displayedName && (

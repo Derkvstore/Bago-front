@@ -212,7 +212,7 @@ export default function Dashboard() {
               <Bars3Icon className="h-6 w-6" />
             </button>
            <img src={logo} alt="NIANGADOU ELECTRO Logo" className="h-10 w-10 mr-2" />
-            <h1 className="text-xl sm:text-2xl font-semibold text-blue-700 mr-4 dark:text-white transition-colors duration-300 truncate">YATTASSAYE ELECTRONIQUE</h1>
+            <h1 className="text-xl sm:text-2xl font-semibold text-blue-700 mr-4 dark:text-white transition-colors duration-300 truncate">YATT ELECTO SERVICES</h1>
           </div>
 
           {displayedName && (

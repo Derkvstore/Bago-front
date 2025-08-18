@@ -16,7 +16,9 @@ import {
   ArrowPathIcon,
   CurrencyDollarIcon,
   ArrowUturnLeftIcon,
-  MagnifyingGlassIcon
+  MagnifyingGlassIcon,
+  TrashIcon,
+  PencilIcon
 } from '@heroicons/react/24/outline';
 
 const MARQUES = ["iPhone", "Samsung", "iPad", "AirPod"];
@@ -45,6 +47,49 @@ const STATUS_DISPLAY_MAP = {
   'remplacé': 'REMPLACÉ',
 };
 
+// Liste des raisons prédéfinies
+const RAISONS_ANNULATION = [
+  "Le client a changé d'avis",
+  "Problème de disponibilité chez le fournisseur",
+  "Article non conforme ou défectueux",
+  "Erreur de commande",
+  "Autre"
+];
+
+const RAISONS_REMPLACEMENT = [
+  "Ecran",
+  "Micro",
+   "Wifi",
+    "Emei",
+     "Resaux",
+      "Vibreur",
+       "OFF",
+        "Bluetooth",
+         "Selfie",
+          "Face OFF",
+           "Mobile casser par le clients il doit faire un rajout",
+            "Affichage Ordinateur",
+             "Flash",
+              "Batterie",
+               "SIM",
+                "Camera Avant",
+                 "0%",
+                  "Panic Full",
+                   "Turbo SIM",
+                    "Capteur",
+                    "Température",
+                     "Arrière Vitre",
+                      "Volume +/-",
+                      "Boutons Allumage",
+                       "Error 4013",
+                       "Charge Problème",
+                       "Piece inconnue",
+                       "Piece d'origin",
+  "Article ne correspondant pas à la description",
+  "Erreur de commande du fournisseur",
+  "Autre"
+];
+
 export default function SpecialOrders() {
   const [orders, setOrders] = useState([]);
   const [clients, setClients] = useState([]);
@@ -63,7 +108,7 @@ export default function SpecialOrders() {
   const [paymentModalError, setPaymentModalError] = useState('');
 
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [confirmModalContent, setConfirmModalContent] = useState({ title: "", message: null });
+  const [confirmModalContent, setConfirmModalContent] = useState({ title: "", message: null, currentOrder: null });
   const [onConfirmAction, setOnConfirmAction] = useState(null);
   const [returnReasonInput, setReturnReasonInput] = useState('');
   const [confirmModalError, setConfirmModalError] = useState('');
@@ -77,6 +122,7 @@ export default function SpecialOrders() {
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
   const [fournisseurName, setFournisseurName] = useState('');
+  const [fournisseurPhone, setFournisseurPhone] = useState('');
   const [marque, setMarque] = useState('');
   const [modele, setModele] = useState('');
   const [stockage, setStockage] = useState('');
@@ -172,15 +218,23 @@ export default function SpecialOrders() {
     const foundClient = clients.find(c => c.nom && clientName && c.nom.toLowerCase() === clientName.toLowerCase());
     if (foundClient) {
       setClientPhone(foundClient.telephone || '');
-    } else {
-      setClientPhone('');
     }
   }, [clientName, clients]);
+  
+  useEffect(() => {
+    const foundFournisseur = fournisseurs.find(f => f.nom && fournisseurName && f.nom.toLowerCase() === fournisseurName.toLowerCase());
+    if (foundFournisseur) {
+      setFournisseurPhone(foundFournisseur.telephone || '');
+    } else {
+      setFournisseurPhone('');
+    }
+  }, [fournisseurName, fournisseurs]);
 
   const resetForm = () => {
     setClientName('');
     setClientPhone('');
     setFournisseurName('');
+    setFournisseurPhone('');
     setMarque('');
     setModele('');
     setStockage('');
@@ -196,6 +250,7 @@ export default function SpecialOrders() {
 
   const openAddModal = () => {
     resetForm();
+    setCurrentOrder(null);
     setIsModalOpen(true);
   };
 
@@ -204,6 +259,7 @@ export default function SpecialOrders() {
     setClientName(order.client_nom);
     setClientPhone(order.client_telephone || '');
     setFournisseurName(order.fournisseur_nom);
+    setFournisseurPhone(order.fournisseur_telephone || '');
     setMarque(order.marque);
     setModele(order.modele);
     setStockage(order.stockage || '');
@@ -222,7 +278,17 @@ export default function SpecialOrders() {
     e.preventDefault();
     setStatusMessage({ type: '', text: '' });
     setIsFormSubmitting(true);
-
+  
+    const parsedPrixAchat = parseFloat(parseNumberFromFormattedString(prixAchatFournisseur));
+    const parsedPrixVente = parseFloat(parseNumberFromFormattedString(prixVenteClient));
+  
+    // Validation du prix de vente
+    if (parsedPrixVente <= parsedPrixAchat) {
+      setStatusMessage({ type: 'error', text: 'Le prix de vente doit être supérieur au prix d\'achat.' });
+      setIsFormSubmitting(false);
+      return;
+    }
+  
     const orderData = {
       client_nom: clientName,
       fournisseur_nom: fournisseurName,
@@ -232,19 +298,18 @@ export default function SpecialOrders() {
       type,
       type_carton: typeCarton || null,
       imei: imei || null,
-      prix_achat_fournisseur: parseFloat(parseNumberFromFormattedString(prixAchatFournisseur)),
-      prix_vente_client: parseFloat(parseNumberFromFormattedString(prixVenteClient)),
+      prix_achat_fournisseur: parsedPrixAchat,
+      prix_vente_client: parsedPrixVente,
       montant_paye: parseFloat(parseNumberFromFormattedString(initialMontantPaye || 0))
     };
-
+  
     try {
       if (currentOrder) {
-        await axios.put(`${backendUrl}/api/special-orders/${currentOrder.order_id}/update-status`, {
-            statut: statut,
-            raison_annulation: raisonAnnulation
-        });
+        // Mise à jour de la commande (logique modifiée)
+        await axios.put(`${backendUrl}/api/special-orders/${currentOrder.order_id}`, orderData);
         setStatusMessage({ type: 'success', text: 'Special order updated successfully!' });
       } else {
+        // Création de la commande
         await axios.post(`${backendUrl}/api/special-orders`, orderData);
         setStatusMessage({ type: 'success', text: 'Special order added successfully!' });
       }
@@ -261,6 +326,7 @@ export default function SpecialOrders() {
   const updateOrderStatus = async (orderId, newStatus, reason = null) => {
     setStatusMessage({ type: '', text: '' });
     setConfirmModalError('');
+    setIsConfirming(true);
     setStatusUpdateLoading(prev => ({ ...prev, [orderId]: true }));
     try {
       await axios.put(`${backendUrl}/api/special-orders/${orderId}/update-status`, {
@@ -324,9 +390,31 @@ export default function SpecialOrders() {
       setIsLoadingPayment(false);
     }
   };
+  
+  const handleDeleteOrder = async (order) => {
+    openConfirmModal(
+      "Confirmer la suppression",
+      `Êtes-vous sûr de vouloir supprimer définitivement la commande spéciale pour "${order.marque} ${order.modele}" ?`,
+      async () => {
+        setIsConfirming(true);
+        try {
+          await axios.delete(`${backendUrl}/api/special-orders/${order.order_id}`);
+          setStatusMessage({ type: 'success', text: 'Commande spéciale supprimée avec succès!' });
+          fetchSpecialOrders();
+        } catch (err) {
+          console.error('Erreur lors de la suppression de la commande:', err);
+          setConfirmModalError(`Erreur lors de la suppression: ${err.response?.data?.error || err.message}`);
+        } finally {
+          setIsConfirming(false);
+          closeConfirmModal();
+        }
+      },
+      order
+    );
+  };
 
-  const openConfirmModal = (title, message, action) => {
-    setConfirmModalContent({ title, message });
+  const openConfirmModal = (title, message, action, order) => {
+    setConfirmModalContent({ title, message, currentOrder: order });
     setOnConfirmAction(() => (currentReason) => action(currentReason));
     setConfirmModalError('');
     setReturnReasonInput('');
@@ -336,7 +424,7 @@ export default function SpecialOrders() {
 
   const closeConfirmModal = () => {
     setShowConfirmModal(false);
-    setConfirmModalContent({ title: "", message: null });
+    setConfirmModalContent({ title: "", message: null, currentOrder: null });
     setOnConfirmAction(null);
     setReturnReasonInput('');
     setConfirmModalError('');
@@ -356,25 +444,26 @@ export default function SpecialOrders() {
               </span>
             )}
           </p>
-          <label htmlFor="reasonInput" className="block text-xs font-medium text-gray-700 mb-1 md:text-sm">
+          <label htmlFor="reasonSelect" className="block text-xs font-medium text-gray-700 mb-1 md:text-sm">
             Raison de l'annulation:
           </label>
-          <textarea
-            ref={textareaRef}
-            id="reasonInput"
+          <select
+            id="reasonSelect"
             value={returnReasonInput}
             onChange={(e) => setReturnReasonInput(e.target.value)}
-            rows={2}
             className="w-full border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition duration-200"
-            placeholder="Ex: Le client a changé d'avis..."
             required
-          ></textarea>
+          >
+            <option value="">Sélectionner une raison</option>
+            {RAISONS_ANNULATION.map(reason => <option key={reason} value={reason}>{reason}</option>)}
+          </select>
           {confirmModalError && (
             <p className="text-red-500 text-xs mt-1">{confirmModalError}</p>
           )}
         </>
       ),
-      (reason) => updateOrderStatus(order.order_id, 'annulé', reason)
+      (reason) => updateOrderStatus(order.order_id, 'annulé', reason),
+      order
     );
   };
 
@@ -386,40 +475,29 @@ export default function SpecialOrders() {
           <p className="text-gray-700 mb-2 text-sm md:text-base">
             Êtes-vous sûr de vouloir marquer la commande spéciale pour "{order.marque} {order.modele}" comme "Remplacée" ?
           </p>
-          <label htmlFor="reasonInput" className="block text-xs font-medium text-gray-700 mb-1 md:text-sm">
+          <label htmlFor="reasonSelect" className="block text-xs font-medium text-gray-700 mb-1 md:text-sm">
             Raison du remplacement:
           </label>
-          <textarea
-            ref={textareaRef}
-            id="reasonInput"
+          <select
+            id="reasonSelect"
             value={returnReasonInput}
             onChange={(e) => setReturnReasonInput(e.target.value)}
-            rows={2}
             className="w-full border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition duration-200"
-            placeholder="Ex: Produit défectueux..."
             required
-          ></textarea>
+          >
+            <option value="">Sélectionner une raison</option>
+            {RAISONS_REMPLACEMENT.map(reason => <option key={reason} value={reason}>{reason}</option>)}
+          </select>
           {confirmModalError && (
             <p className="text-red-500 text-xs mt-1">{confirmModalError}</p>
           )}
         </>
       ),
-      (reason) => updateOrderStatus(order.order_id, 'remplacé', reason)
+      (reason) => updateOrderStatus(order.order_id, 'remplacé', reason),
+      order
     );
   };
   
-  // Suppression du useEffect qui posait problème
-  /*
-  useEffect(() => {
-    if (showConfirmModal && textareaRef.current) {
-      const timer = setTimeout(() => {
-        textareaRef.current.focus();
-      }, 50);
-      return () => clearTimeout(timer);
-    }
-  }, [showConfirmModal, returnReasonInput]);
-  */
-
   const filteredOrders = orders.filter(order => {
     const searchLower = searchTerm.toLowerCase();
     return (
@@ -527,6 +605,9 @@ export default function SpecialOrders() {
                   <td className="px-4 py-4 whitespace-nowrap hidden sm:table-cell">
                     <div className="flex items-center">
                       <BuildingStorefrontIcon className="h-4 w-4 mr-1 text-gray-500" /> {order.fournisseur_nom}
+                    </div>
+                    <div className="text-gray-500 text-xs flex items-center hidden md:block">
+                      <PhoneIcon className="h-3 w-3 mr-1" /> {order.fournisseur_telephone || 'N/A'}
                     </div>
                   </td>
                   <td className="px-4 py-4">
@@ -637,6 +718,22 @@ export default function SpecialOrders() {
                           )}
                         </button>
                       )}
+                       <button
+                          onClick={() => openEditModal(order)}
+                          className="p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+                          title="Modifier la commande"
+                          disabled={statusUpdateLoading[order.order_id]}
+                      >
+                          <PencilIcon className="h-5 w-5" />
+                      </button>
+                      <button
+                          onClick={() => handleDeleteOrder(order)}
+                          className="p-1 rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
+                          title="Supprimer la commande"
+                          disabled={statusUpdateLoading[order.order_id]}
+                      >
+                          <TrashIcon className="h-5 w-5" />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -688,6 +785,7 @@ export default function SpecialOrders() {
                     <option key={fournisseur.id} value={fournisseur.nom} />
                   ))}
                 </datalist>
+                {fournisseurPhone && <p className="text-[10px] text-gray-500 mt-0.5">Téléphone: {fournisseurPhone}</p>}
               </div>
 
               <div>
@@ -930,10 +1028,21 @@ export default function SpecialOrders() {
         </div>
       )}
 
-      {showConfirmModal && (
+      {showConfirmModal && confirmModalContent.currentOrder && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center p-4 z-50 no-print">
           <div className="bg-white p-4 sm:p-6 rounded-lg shadow-xl max-w-xs sm:max-w-sm w-full relative z-[60] pointer-events-auto">
             <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-3">{confirmModalContent.title}</h3>
+            {confirmModalContent.currentOrder.fournisseur_nom && (
+                <p className="text-sm text-gray-600">
+                    <span className="font-semibold">Fournisseur :</span> {confirmModalContent.currentOrder.fournisseur_nom}
+                </p>
+            )}
+            {confirmModalContent.currentOrder.fournisseur_telephone && (
+                <p className="text-sm text-gray-600 mb-4">
+                    <span className="font-semibold">Téléphone Fournisseur :</span> {confirmModalContent.currentOrder.fournisseur_telephone}
+                </p>
+            )}
+            
             {typeof confirmModalContent.message === 'string' ? (
               <p className="text-sm text-gray-700 mb-4">{confirmModalContent.message}</p>
             ) : (
@@ -953,11 +1062,11 @@ export default function SpecialOrders() {
               <button
                 onClick={() => onConfirmAction(returnReasonInput)}
                 className={`px-4 py-2 text-sm rounded-md transition ${
-                  isConfirming || (confirmModalContent.message && typeof confirmModalContent.message !== 'string' && !returnReasonInput.trim())
+                  isConfirming || (confirmModalContent.title.includes('suppression') ? false : !returnReasonInput.trim())
                     ? 'bg-red-400 cursor-not-allowed'
                     : 'bg-red-600 text-white hover:bg-red-700'
                 }`}
-                disabled={isConfirming || (confirmModalContent.message && typeof confirmModalContent.message !== 'string' && !returnReasonInput.trim())}
+                disabled={isConfirming || (confirmModalContent.title.includes('suppression') ? false : !returnReasonInput.trim())}
               >
                 {isConfirming ? (
                   <ArrowPathIcon className="h-5 w-5 animate-spin mx-auto" />
